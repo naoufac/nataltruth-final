@@ -42,6 +42,9 @@
 }
 
 @layer base {
+  :root {
+    --font-base: 17.5px;
+  }
   html {
     -webkit-text-size-adjust: 100%;
   }
@@ -49,7 +52,7 @@
     background-color: var(--bg);
     color: var(--ink);
     font-family: "Inter", system-ui, -apple-system, sans-serif;
-    font-size: 17px;
+    font-size: var(--font-base);
     line-height: 1.6;
     -webkit-font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
@@ -61,11 +64,24 @@
     line-height: 1.15;
     color: var(--ink);
   }
+  a {
+    color: var(--primary-ink);
+    text-decoration: none;
+  }
+  a:hover { text-decoration: underline; }
   ::selection {
     background: var(--primary-soft);
     color: var(--primary-ink);
   }
 }
+
+/* Reading mode — wider, calmer, for long-form articles. */
+.reading-mode .prose {
+  font-family: "Fraunces", Georgia, serif;
+  font-size: 1.05em;
+  line-height: 1.7;
+}
+.reading-mode .prose p { max-width: 64ch; }
 
 @layer components {
   .container-prose {
@@ -104,4 +120,38 @@
     color: var(--ink-soft);
     @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
   }
+  /* Long-form article typography */
+  .prose {
+    color: var(--ink);
+  }
+  .prose h2, .prose h3, .prose h4 {
+    margin-top: 1.8em;
+    margin-bottom: 0.5em;
+    font-family: "Fraunces", Georgia, serif;
+  }
+  .prose p {
+    margin: 0 0 1.1em;
+    max-width: 68ch;
+  }
+  .prose ul, .prose ol {
+    margin: 0 0 1.1em;
+    padding-left: 1.4em;
+    max-width: 68ch;
+  }
+  .prose li { margin-bottom: 0.4em; }
+  .prose blockquote {
+    border-left: 3px solid var(--primary);
+    padding-left: 1em;
+    margin: 1.2em 0;
+    color: var(--ink-soft);
+    font-style: italic;
+  }
+  .prose code {
+    font-family: "JetBrains Mono", monospace;
+    background: var(--bg-subtle);
+    padding: 0.1em 0.35em;
+    border-radius: 4px;
+    font-size: 0.9em;
+  }
+  .prose strong { color: var(--ink); }
 }

@@ -1,12 +1,14 @@
 /**
- * NatalTruth Calculation API — api.nataltruth.com
+ * NatalTruth Calculation + Product API.
  *
- * Chart: planets, houses, aspects, patterns (swiss + moshier)
- * Name: Pythagorean, Chaldean, Abjad, Hebrew, Vedic (+ full profile)
+ * Calculation engine (13 endpoints): /v1/calculate, /v1/calculate/swiss,
+ * /v1/calculate/moshier, /v1/name/*, /v1/gematria, /health.
+ * Product: /api/auth/*, /api/charts, /api/posts, /api/admin/*.
  */
 import "dotenv/config";
 import express from "express";
 import cors from "cors";
+import cookieParser from "cookie-parser";
 import { z } from "zod";
 import { calculateFullChart } from "../../engine/src/calculate.js";
 import type { EngineMode } from "../../engine/src/calculate.js";
@@ -20,21 +22,33 @@ import {
   listLetterSystems,
   type LetterSystemId,
 } from "../../engine/src/nameSystems.js";
+import { db } from "./db.js";
+import { attachUser } from "./auth.js";
+import { authRouter } from "./routes/auth.js";
+import { chartsRouter } from "./routes/charts.js";
+import { blogRouter, adminRouter } from "./routes/blog.js";
+import { seed } from "./seed.js";
+
+// First-run seeding (admin account from env + starter posts). Safe to call every boot.
+seed();
 
 const app = express();
 app.use(express.json({ limit: "2mb" }));
+app.use(cookieParser());
 app.use(
   cors({
     origin: [
       "https://nataltruth.com",
       "https://www.nataltruth.com",
-      "https://nao.nataltruth.com",
+      "https://nataltruth.135.181.44.161.sslip.io",
       "http://localhost:3000",
       "http://localhost:5173",
     ],
     credentials: true,
   })
 );
+// Attach the current user (if any) to every request. Never blocks.
+app.use(attachUser);
 
 const BirthBodyBase = z.object({
   fullName: z.string().min(1),
@@ -113,10 +127,17 @@ async function runCalculate(
 }
 
 app.get("/health", (_req, res) => {
+  let database = "ok";
+  try {
+    db.prepare("SELECT 1").get();
+  } catch {
+    database = "error";
+  }
   res.json({
     ok: true,
     service: "nataltruth-api",
     version: "1.0.0",
+    database,
     chart: {
       engines: ["swiss", "moshier"],
       includes: [
@@ -231,6 +252,12 @@ app.post("/v1/gematria", async (req, res) => {
     sendErr(res, err, "Gematria failed");
   }
 });
+
+// ── Product (auth, saved charts, blog, admin CMS) ──────────────────
+app.use("/api/auth", authRouter);
+app.use("/api/charts", chartsRouter);
+app.use("/api", blogRouter);   // /api/posts, /api/posts/:slug
+app.use("/api/admin", adminRouter);
 
 const port = parseInt(process.env.PORT || "3100", 10);
 app.listen(port, () => {

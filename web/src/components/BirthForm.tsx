@@ -2,7 +2,7 @@ import { useState, type FormEvent } from "react";
 import { api, type BirthInput, type CalculateResponse } from "../lib/api";
 
 interface Props {
-  onResult: (data: CalculateResponse) => void;
+  onResult: (data: CalculateResponse, input: BirthInput) => void;
   onLoadingChange?: (loading: boolean) => void;
 }
 
@@ -34,7 +34,7 @@ export default function BirthForm({ onResult, onLoadingChange }: Props) {
     onLoadingChange?.(true);
     try {
       const data = await api.calculate(form);
-      onResult(data);
+      onResult(data, form);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Calculation failed.");
     } finally {
