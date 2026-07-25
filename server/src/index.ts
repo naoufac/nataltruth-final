@@ -253,6 +253,44 @@ app.post("/v1/gematria", async (req, res) => {
   }
 });
 
+// ── Chat (OpenRouter, grounded coaching) ───────────────────────────
+import { chatCompletion } from "./openrouter.js";
+
+const ChatBody = z.object({
+  message: z.string().min(1),
+  session_id: z.string().optional(),
+  context: z.string().nullable().optional(),
+});
+
+app.post("/v1/chat", async (req, res) => {
+  try {
+    const body = ChatBody.parse(req.body);
+    const { response, model } = await chatCompletion({
+      message: body.message,
+      context: body.context,
+    });
+    res.json({ ok: true, response, model, session_id: body.session_id || null });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Chat failed";
+    res.status(msg.includes("not configured") ? 503 : 500).json({ ok: false, error: msg });
+  }
+});
+
+// Legacy alias
+app.post("/chat", async (req, res) => {
+  try {
+    const body = ChatBody.parse(req.body);
+    const { response, model } = await chatCompletion({
+      message: body.message,
+      context: body.context,
+    });
+    res.json({ ok: true, response, model, session_id: body.session_id || null });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Chat failed";
+    res.status(msg.includes("not configured") ? 503 : 500).json({ ok: false, error: msg });
+  }
+});
+
 // ── Product (auth, saved charts, blog, admin CMS) ──────────────────
 app.use("/api/auth", authRouter);
 app.use("/api/charts", chartsRouter);
