@@ -86,6 +86,7 @@ export interface Post {
   excerpt: string;
   body_md: string;
   cover: string;
+  category: string;
   published: boolean;
   published_at: string | null;
   created_at: string;
@@ -142,8 +143,10 @@ export const api = {
   deleteChart: (id: string) => req<{ ok: boolean }>(`/api/charts/${id}`, { method: "DELETE" }),
 
   // blog (public)
-  listPosts: () => req<{ ok: boolean; posts: Post[] }>("/api/posts"),
+  listPosts: (category?: string) =>
+    req<{ ok: boolean; posts: Post[] }>(`/api/posts${category ? `?category=${category}` : ""}`),
   getPost: (slug: string) => req<{ ok: boolean; post: Post }>(`/api/posts/${slug}`),
+  listCategories: () => req<{ ok: boolean; categories: { id: string; count: number }[] }>(`/api/categories`),
 
   // admin
   adminListPosts: () => req<{ ok: boolean; posts: Post[] }>("/api/admin/posts"),

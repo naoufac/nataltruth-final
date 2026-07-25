@@ -24,6 +24,7 @@ function rowToPost(r: {
   excerpt: string;
   body_md: string;
   cover: string;
+  category: string;
   published: number;
   published_at: string | null;
   created_at: string;
@@ -36,6 +37,7 @@ function rowToPost(r: {
     excerpt: r.excerpt,
     body_md: r.body_md,
     cover: r.cover,
+    category: r.category,
     published: r.published === 1,
     published_at: r.published_at,
     created_at: r.created_at,
@@ -44,13 +46,29 @@ function rowToPost(r: {
 }
 
 // ── Public blog: only published, newest first ──────────────────────
-blogRouter.get("/posts", (_req, res) => {
+blogRouter.get("/posts", (req, res) => {
+  const cat = req.query.category as string | undefined;
+  const rows = cat
+    ? db
+        .prepare(
+          "SELECT id, slug, title, excerpt, body_md, cover, category, published, published_at, created_at, updated_at FROM posts WHERE published = 1 AND category = ? ORDER BY COALESCE(published_at, created_at) DESC"
+        )
+        .all(cat) as any[]
+    : db
+        .prepare(
+          "SELECT id, slug, title, excerpt, body_md, cover, category, published, published_at, created_at, updated_at FROM posts WHERE published = 1 ORDER BY COALESCE(published_at, created_at) DESC"
+        )
+        .all() as any[];
+  res.json({ ok: true, posts: rows.map(rowToPost) });
+});
+
+blogRouter.get("/categories", (_req, res) => {
   const rows = db
     .prepare(
-      "SELECT id, slug, title, excerpt, body_md, cover, published, published_at, created_at, updated_at FROM posts WHERE published = 1 ORDER BY COALESCE(published_at, created_at) DESC"
+      "SELECT category, COUNT(*) as count FROM posts WHERE published = 1 GROUP BY category ORDER BY count DESC"
     )
-    .all() as any[];
-  res.json({ ok: true, posts: rows.map(rowToPost) });
+    .all() as { category: string; count: number }[];
+  res.json({ ok: true, categories: rows.map((r) => ({ id: r.category, count: r.count })) });
 });
 
 blogRouter.get("/posts/:slug", (req, res) => {
@@ -72,7 +90,7 @@ adminRouter.use(requireAdmin);
 adminRouter.get("/posts", (_req, res) => {
   const rows = db
     .prepare(
-      "SELECT id, slug, title, excerpt, body_md, cover, published, published_at, created_at, updated_at FROM posts ORDER BY updated_at DESC"
+      "SELECT id, slug, title, excerpt, body_md, cover, category, published, published_at, created_at, updated_at FROM posts ORDER BY updated_at DESC"
     )
     .all() as any[];
   res.json({ ok: true, posts: rows.map(rowToPost) });
@@ -83,6 +101,7 @@ const PostInput = z.object({
   excerpt: z.string().min(1).max(400),
   body_md: z.string().min(1),
   cover: z.string().max(20).optional(),
+  category: z.string().max(60).optional(),
   slug: z.string().max(80).optional(),
   published: z.boolean().optional(),
 });
@@ -99,8 +118,8 @@ adminRouter.post("/posts", (req: Request, res: Response) => {
   const slug = slugify(d.slug || d.title);
   const ts = nowIso();
   db.prepare(
-    `INSERT INTO posts(id, slug, title, excerpt, body_md, cover, published, published_at, created_at, updated_at, author_id)
-     VALUES(?,?,?,?,?,?,?,?,?,?,?)`
+    `INSERT INTO posts(id, slug, title, excerpt, body_md, cover, category, published, published_at, created_at, updated_at, author_id)
+     VALUES(?,?,?,?,?,?,?,?,?,?,?,?)`
   ).run(
     id,
     slug,
@@ -108,6 +127,7 @@ adminRouter.post("/posts", (req: Request, res: Response) => {
     d.excerpt,
     d.body_md,
     d.cover || "✦",
+    d.category || "general",
     d.published ? 1 : 0,
     d.published ? ts : null,
     ts,
@@ -153,6 +173,10 @@ adminRouter.put("/posts/:id", (req: Request, res: Response) => {
   if (d.cover !== undefined) {
     fields.push("cover = ?");
     values.push(d.cover);
+  }
+  if (d.category !== undefined) {
+    fields.push("category = ?");
+    values.push(d.category);
   }
   if (d.published !== undefined) {
     fields.push("published = ?");

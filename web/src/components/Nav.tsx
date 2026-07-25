@@ -18,6 +18,7 @@ function Logo() {
 
 const navItems = [
   { to: "/reading", label: "My chart" },
+  { to: "/compatibility", label: "Compatibility" },
   { to: "/blog", label: "Blog" },
 ];
 

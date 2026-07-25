@@ -40,6 +40,7 @@ CREATE TABLE IF NOT EXISTS posts (
   excerpt      TEXT NOT NULL,
   body_md      TEXT NOT NULL,
   cover        TEXT NOT NULL DEFAULT '✦',
+  category     TEXT NOT NULL DEFAULT 'general',
   published    INTEGER NOT NULL DEFAULT 0,
   published_at TEXT,
   created_at   TEXT NOT NULL,
@@ -53,6 +54,14 @@ CREATE TABLE IF NOT EXISTS settings (
   value TEXT NOT NULL
 );
 `);
+
+// Migration: add category column to posts if missing (for existing DBs)
+try {
+  db.prepare("SELECT category FROM posts LIMIT 0").get();
+} catch {
+  db.exec("ALTER TABLE posts ADD COLUMN category TEXT NOT NULL DEFAULT 'general';");
+  console.log("[db] Migration: added category column to posts.");
+}
 
 // Stable JWT secret: env wins; else generate once and persist in settings.
 export function getJwtSecret(): string {

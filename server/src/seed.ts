@@ -104,15 +104,15 @@ None of these is "more correct" than the others — they're different lenses. Re
   ];
 
   const stmt = db.prepare(
-    `INSERT INTO posts(id, slug, title, excerpt, body_md, cover, published, published_at, created_at, updated_at)
-     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
+    `INSERT INTO posts(id, slug, title, excerpt, body_md, cover, category, published, published_at, created_at, updated_at)
+     VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`
   );
   const now = new Date().toISOString();
   const base = Date.now() - posts.length * 86400000;
   for (let i = 0; i < posts.length; i++) {
     const p = posts[i];
     const ts = new Date(base + i * 86400000).toISOString();
-    stmt.run(`seed_${i}`, p.slug, p.title, p.excerpt, p.body_md, p.cover, p.published, ts, ts, now);
+    stmt.run(`seed_${i}`, p.slug, p.title, p.excerpt, p.body_md, p.cover, "understanding", p.published, ts, ts, now);
   }
   console.log(`[seed] Inserted ${posts.length} starter posts.`);
 }

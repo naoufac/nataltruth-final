@@ -6,6 +6,7 @@ import Landing from "./pages/Landing";
 import ReadingPage from "./pages/ReadingPage";
 import BlogList from "./pages/BlogList";
 import BlogPost from "./pages/BlogPost";
+import Compatibility from "./pages/Compatibility";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import MyCharts from "./pages/MyCharts";
@@ -45,6 +46,7 @@ export default function App() {
         <Routes>
           <Route path="/" element={<Landing />} />
           <Route path="/reading" element={<ReadingPage />} />
+          <Route path="/compatibility" element={<Compatibility />} />
           <Route path="/blog" element={<BlogList />} />
           <Route path="/blog/:slug" element={<BlogPost />} />
           <Route path="/login" element={<Login />} />
@@ -62,6 +64,7 @@ export default function App() {
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
             <Link to="/" className="font-serif text-base font-semibold text-ink">NatalTruth</Link>
             <Link to="/reading" className="hover:text-ink">My chart</Link>
+            <Link to="/compatibility" className="hover:text-ink">Compatibility</Link>
             <Link to="/blog" className="hover:text-ink">Blog</Link>
             <span className="text-trust">Swiss Ephemeris · Tropical · Placidus</span>
           </div>

@@ -32,6 +32,7 @@ export default function Landing() {
           </p>
           <div className="mt-8 flex flex-wrap items-center gap-3">
             <Link to="/reading" className="btn-primary text-base">Reveal my chart — free</Link>
+            <Link to="/compatibility" className="btn-ghost text-base">Compatibility →</Link>
             <Link to="/blog" className="btn-ghost text-base">Read the blog →</Link>
           </div>
           <div className="mt-8 max-w-xl">
@@ -66,6 +67,32 @@ export default function Landing() {
             </Link>
           ))}
           {posts.length === 0 && <p className="text-ink-faint">Loading posts…</p>}
+        </div>
+      </section>
+
+      {/* Compatibility teaser */}
+      <section className="border-t border-line bg-[color:var(--bg-subtle)]">
+        <div className="container-prose py-14">
+          <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
+            <div>
+              <h2 className="text-2xl sm:text-3xl">How do your signs match up?</h2>
+              <p className="mt-3 text-ink-soft">
+                A full 12×12 zodiac compatibility grid — honest, element-based, and clickable.
+                Tap any pairing to see the real dynamic, then get your full chart.
+              </p>
+              <Link to="/compatibility" className="btn-primary mt-6">Explore compatibility →</Link>
+            </div>
+            <div className="grid grid-cols-12 gap-1 text-center text-xs">
+              {["♈","♉","♊","♋","♌","♍","♎","♏","♐","♑","♒","♓"].map((s) => (
+                <div key={s} className="text-lg">{s}</div>
+              ))}
+              {Array.from({ length: 144 }, (_, i) => {
+                const score = ((Math.floor(i / 12) + i % 12) % 4) + 2;
+                const bg = score >= 5 ? "#7BAE43" : score === 4 ? "#A8C97A" : score === 3 ? "#E8A93C" : "#D8794F";
+                return <div key={i} className="flex h-7 items-center justify-center rounded" style={{ background: bg, color: score >= 4 ? "#1F1B16" : "#fff" }}>{score}</div>;
+              })}
+            </div>
+          </div>
         </div>
       </section>
     </div>
