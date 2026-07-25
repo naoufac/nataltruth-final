@@ -2,7 +2,7 @@ import type { CalculateResponse, PlanetPosition } from "../lib/api";
 import TrustStrip from "./TrustStrip";
 
 function findPlanet(planets: PlanetPosition[], name: string) {
-  return planets.find((p) => p.name?.toLowerCase() === name);
+  return planets.find((p) => p.planet?.toLowerCase() === name);
 }
 
 const ASPECT_PLAIN: Record<string, string> = {
@@ -25,7 +25,7 @@ export default function Reading({ data }: { data: CalculateResponse }) {
   const { snapshot } = data;
   const sun = findPlanet(snapshot.planets, "sun");
   const moon = findPlanet(snapshot.planets, "moon");
-  const rising = snapshot.houses?.[0]; // cusp 1 = Ascendant, shown if available
+  const risingSign = snapshot.houses?.[0]?.sign; // 1st-house cusp = Ascendant
 
   return (
     <div className="flex flex-col gap-8">
@@ -35,13 +35,13 @@ export default function Reading({ data }: { data: CalculateResponse }) {
       <section className="card p-6 sm:p-8">
         <p className="text-sm uppercase tracking-wide text-ink-faint">The big three</p>
         <div className="mt-3 grid gap-4 sm:grid-cols-3">
-          <BigThree label="Sun" sign={sun?.sign} degree={sun?.degree} note="your core self" />
-          <BigThree label="Moon" sign={moon?.sign} degree={moon?.degree} note="your inner world" />
+          <BigThree label="Sun" sign={sun?.sign} degree={sun?.signDegree} note="your core self" />
+          <BigThree label="Moon" sign={moon?.sign} degree={moon?.signDegree} note="your inner world" />
           <BigThree
             label="Rising"
-            sign={rising ? undefined : "—"}
-            note="needs birth time"
-            muted
+            sign={risingSign}
+            note={risingSign ? "how you meet the world" : "needs birth time"}
+            muted={!risingSign}
           />
         </div>
         <p className="mt-5 text-ink-soft">
@@ -68,14 +68,14 @@ export default function Reading({ data }: { data: CalculateResponse }) {
             </thead>
             <tbody>
               {snapshot.planets.map((p) => (
-                <tr key={p.name} className="border-t border-line">
-                  <td className="px-4 py-2.5 capitalize">{p.name}</td>
+                <tr key={p.planet} className="border-t border-line">
+                  <td className="px-4 py-2.5">{p.planet}</td>
                   <td className="px-4 py-2.5">{p.sign}</td>
                   <td className="px-4 py-2.5 font-mono">
-                    {p.degree.toFixed(2)}°
+                    {p.signDegree.toFixed(2)}°
                   </td>
                   <td className="px-4 py-2.5 text-ink-faint">
-                    {p.retrograde ? "Retrograde" : "Direct"}
+                    {p.isRetrograde ? "Retrograde" : "Direct"}
                   </td>
                 </tr>
               ))}
@@ -93,10 +93,10 @@ export default function Reading({ data }: { data: CalculateResponse }) {
             {snapshot.aspects.slice(0, 8).map((a, i) => (
               <li key={i} className="flex flex-wrap items-baseline justify-between gap-2 py-3">
                 <span className="font-medium">
-                  {a.planet1} <span className="text-ink-faint">{a.aspect}</span> {a.planet2}
+                  {a.planet1} <span className="text-ink-faint">{a.type}</span> {a.planet2}
                 </span>
                 <span className="text-sm text-ink-soft">
-                  {ASPECT_PLAIN[a.aspect] ?? a.aspect}{" "}
+                  {ASPECT_PLAIN[a.type.toLowerCase()] ?? a.type}{" "}
                   <span className="font-mono text-ink-faint">· orb {a.orb.toFixed(2)}°</span>
                 </span>
               </li>

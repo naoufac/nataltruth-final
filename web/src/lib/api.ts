@@ -19,12 +19,15 @@ export interface BirthInput {
 }
 
 export interface PlanetPosition {
-  name: string;
+  planet: string;
   longitude: number;
+  latitude?: number;
+  distance?: number;
+  longitudeSpeed?: number;
   sign: string;
-  degree: number;
-  retrograde?: boolean;
+  signDegree: number;
   house?: number | null;
+  isRetrograde?: boolean;
 }
 
 export interface ChartSnapshot {
@@ -34,9 +37,16 @@ export interface ChartSnapshot {
   input: Record<string, unknown>;
   moment: { utcIso?: string; julianDay: number; notes?: string[] };
   planets: PlanetPosition[];
-  houses: unknown[];
-  aspects: { planet1: string; planet2: string; aspect: string; orb: number }[];
-  patterns: { type: string; planets?: string[]; strength?: number; description?: string }[];
+  houses: { house: number; longitude: number; sign: string; signDegree: number }[];
+  aspects: { planet1: string; planet2: string; type: string; angle: number; orb: number }[];
+  patterns: {
+    type: string;
+    planets?: string[];
+    signs?: string[];
+    element?: string;
+    strength?: number;
+    description?: string;
+  }[];
   numerology: {
     systems?: Record<string, { total: number; reduced: number }>;
     coreNumbers?: Record<string, number>;

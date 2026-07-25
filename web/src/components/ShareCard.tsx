@@ -5,8 +5,8 @@ import type { CalculateResponse } from "../lib/api";
 // Sized for Instagram stories (9:16-ish) and screenshot-friendly on phones.
 export default function ShareCard({ data }: { data: CalculateResponse }) {
   const ref = useRef<HTMLDivElement>(null);
-  const sun = data.snapshot.planets.find((p) => p.name?.toLowerCase() === "sun");
-  const moon = data.snapshot.planets.find((p) => p.name?.toLowerCase() === "moon");
+  const sun = data.snapshot.planets.find((p) => p.planet?.toLowerCase() === "sun");
+  const moon = data.snapshot.planets.find((p) => p.planet?.toLowerCase() === "moon");
 
   async function share() {
     const url = window.location.href;
@@ -41,7 +41,7 @@ export default function ShareCard({ data }: { data: CalculateResponse }) {
         <div className="mt-8">
           <p className="text-xs uppercase tracking-wide text-ink-faint">Sun</p>
           <p className="font-serif text-4xl">{sun?.sign ?? "—"}</p>
-          <p className="font-mono text-xs text-ink-soft">{sun?.degree.toFixed(2)}°</p>
+          <p className="font-mono text-xs text-ink-soft">{sun?.signDegree.toFixed(2)}°</p>
         </div>
         <div className="mt-5">
           <p className="text-xs uppercase tracking-wide text-ink-faint">Moon</p>
