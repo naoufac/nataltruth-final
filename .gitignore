@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.env
+.env.local
+.secrets/
+*.log
+.DS_Store
+local-only/
+# web build artifacts
+web/dist/
+web/node_modules/
+# keep stress reports tracked (truth evidence) — do NOT ignore here
