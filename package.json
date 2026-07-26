@@ -24,6 +24,7 @@
     "express": "^4.21.2",
     "jsonwebtoken": "^9.0.2",
     "swisseph-wasm": "^0.0.4",
+    "tz-lookup": "^6.1.25",
     "zod": "^4.1.12"
   },
   "devDependencies": {

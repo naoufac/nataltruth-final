@@ -28,6 +28,7 @@ import { authRouter } from "./routes/auth.js";
 import { chartsRouter } from "./routes/charts.js";
 import { blogRouter, adminRouter } from "./routes/blog.js";
 import { seed } from "./seed.js";
+import { placesRouter } from "./places.js";
 
 // First-run seeding (admin account from env + starter posts). Safe to call every boot.
 seed();
@@ -296,6 +297,7 @@ app.use("/api/auth", authRouter);
 app.use("/api/charts", chartsRouter);
 app.use("/api", blogRouter);   // /api/posts, /api/posts/:slug
 app.use("/api/admin", adminRouter);
+app.use("/api/places", placesRouter());  // /api/places/autocomplete, /api/places/resolve
 
 const port = parseInt(process.env.PORT || "3100", 10);
 app.listen(port, () => {
