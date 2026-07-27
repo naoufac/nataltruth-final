@@ -1,40 +1,57 @@
+import { useState } from "react";
 import type { CalculateResponse, PlanetPosition } from "../lib/api";
 import TrustStrip from "./TrustStrip";
+
+const PLANET_SYMBOLS: Record<string, string> = {
+  Sun: "☉", Moon: "☽", Mercury: "☿", Venus: "♀", Mars: "♂",
+  Jupiter: "♃", Saturn: "♄", Uranus: "♅", Neptune: "♆", Pluto: "♇",
+  "North Node": "☊", "South Node": "☋", Chiron: "⚷", Lilith: "⚸",
+  "Part of Fortune": "⊕",
+};
+
+const ELEMENT_COLORS: Record<string, string> = {
+  Fire: "text-orange-500", Earth: "text-emerald-600", Air: "text-cyan-500", Water: "text-blue-500",
+};
+
+function getElement(sign: string): string {
+  const fire = ["Aries", "Leo", "Sagittarius"];
+  const earth = ["Taurus", "Virgo", "Capricorn"];
+  const air = ["Gemini", "Libra", "Aquarius"];
+  const water = ["Cancer", "Scorpio", "Pisces"];
+  if (fire.includes(sign)) return "Fire";
+  if (earth.includes(sign)) return "Earth";
+  if (air.includes(sign)) return "Air";
+  if (water.includes(sign)) return "Water";
+  return "";
+}
 
 function findPlanet(planets: PlanetPosition[], name: string) {
   return planets.find((p) => p.planet?.toLowerCase() === name);
 }
 
-const SIGN_QUALITIES: Record<string, string> = {
-  Aries: "bold, pioneering, and direct. You lead with courage.",
-  Taurus: "grounded, patient, and sensual. You build with steady hands.",
-  Gemini: "curious, witty, and communicative. You connect through ideas.",
-  Cancer: "caring, intuitive, and protective. You nurture what matters.",
-  Leo: "confident, warm, and creative. You shine when you express yourself.",
-  Virgo: "precise, helpful, and analytical. You perfect the details.",
-  Libra: "diplomatic, fair, and charming. You create harmony.",
-  Scorpio: "passionate, deep, and transformative. you go where others won't.",
-  Sagittarius: "adventurous, honest, and philosophical. You seek truth.",
-  Capricorn: "disciplined, ambitious, and strategic. You build to last.",
-  Aquarius: "original, independent, and visionary. You see the future.",
-  Pisces: "compassionate, artistic, and intuitive. You feel what others miss.",
-};
-
-const ASPECT_PLAIN: Record<string, string> = {
-  Conjunction: "merged energy — concentrated power",
-  Sextile: "an easy opportunity, if you act on it",
-  Square: "productive friction that forces growth",
-  Trine: "natural flow and talent",
-  Opposition: "a balance to strike between two pulls",
-};
-
-const PATTERN_PLAIN: Record<string, string> = {
-  grand_trine: "A Grand Trine — three points of natural ease and talent.",
-  t_square: "A T-Square — tension that drives achievement.",
-  yod: "A Yod — a 'finger of fate' pointing at a special purpose.",
-  stellium: "A Stellium — concentrated energy in one area of life.",
-  grand_cross: "A Grand Cross — four-way tension demanding integration.",
-};
+function renderMarkdown(md: string): string {
+  // Minimal safe markdown renderer (same as lib/markdown.ts but inline to avoid circular import).
+  function esc(s: string): string {
+    return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  }
+  function inline(t: string): string {
+    t = esc(t);
+    t = t.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+    t = t.replace(/\*([^*]+)\*/g, "<em>$1</em>");
+    return t;
+  }
+  return md.split("\n").map((line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return "";
+    if (/^##\s/.test(trimmed)) return `<h2>${inline(trimmed.replace(/^##\s/, ""))}</h2>`;
+    if (/^###\s/.test(trimmed)) return `<h3>${inline(trimmed.replace(/^###\s/, ""))}</h3>`;
+    if (/^#\s/.test(trimmed)) return `<h2>${inline(trimmed.replace(/^#\s/, ""))}</h2>`;
+    if (/^>\s/.test(trimmed)) return `<blockquote>${inline(trimmed.replace(/^>\s/, ""))}</blockquote>`;
+    if (/^[-*]\s/.test(trimmed)) return `<li>${inline(trimmed.replace(/^[-*]\s/, ""))}</li>`;
+    if (/^---$/.test(trimmed)) return `<hr />`;
+    return `<p>${inline(trimmed)}</p>`;
+  }).join("\n");
+}
 
 export default function Reading({ data }: { data: CalculateResponse }) {
   const { snapshot } = data;
@@ -42,91 +59,131 @@ export default function Reading({ data }: { data: CalculateResponse }) {
   const moon = findPlanet(snapshot.planets, "moon");
   const risingSign = snapshot.houses?.[0]?.sign;
 
+  const [deepReading, setDeepReading] = useState<string | null>(null);
+  const [deepLoading, setDeepLoading] = useState(false);
+  const [deepError, setDeepError] = useState<string | null>(null);
+  const [deepModel, setDeepModel] = useState<string>("");
+
+  async function generateReading() {
+    setDeepLoading(true);
+    setDeepError(null);
+    setDeepReading(null);
+    try {
+      const res = await fetch("/v1/reading/deep", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ snapshot }),
+        signal: AbortSignal.timeout(120000),
+      });
+      const j = await res.json();
+      if (j.ok) {
+        setDeepReading(j.reading);
+        setDeepModel(j.model);
+      } else {
+        setDeepError(j.error || "Could not generate reading.");
+      }
+    } catch (e) {
+      setDeepError(e instanceof Error ? e.message : "Could not generate reading.");
+    } finally {
+      setDeepLoading(false);
+    }
+  }
+
+  const topAspects = [...(snapshot.aspects || [])].sort((a, b) => (a.orb || 0) - (b.orb || 0)).slice(0, 15);
+
   return (
-    <div className="flex flex-col gap-10">
+    <div className="flex flex-col gap-8">
       <TrustStrip engine={snapshot.ephemeris?.backend === "moshier" ? "Moshier" : "Swiss Ephemeris"} />
 
-      {/* Section 1: Your Big Three — the headline */}
-      <section className="card overflow-hidden">
-        <div className="border-b border-line bg-[color:var(--bg-subtle)] px-6 py-4 sm:px-8">
-          <p className="text-sm uppercase tracking-wide text-ink-faint">Your chart at a glance</p>
-        </div>
-        <div className="grid gap-6 p-6 sm:grid-cols-3 sm:gap-4 sm:p-8">
-          <BigThreeCard
-            label="Sun"
-            sign={sun?.sign}
-            degree={sun?.signDegree}
-            meaning={sun?.sign ? SIGN_QUALITIES[sun.sign] : undefined}
-            note="Your core identity"
-          />
-          <BigThreeCard
-            label="Moon"
-            sign={moon?.sign}
-            degree={moon?.signDegree}
-            meaning={moon?.sign ? SIGN_QUALITIES[moon.sign] : undefined}
-            note="Your emotional world"
-          />
-          <BigThreeCard
-            label="Rising"
-            sign={risingSign}
-            meaning={risingSign ? SIGN_QUALITIES[risingSign] : undefined}
-            note={risingSign ? "How you meet the world" : "Needs birth time"}
-            muted={!risingSign}
-          />
+      {/* The Big Three — prominent cards */}
+      <section>
+        <h2 className="mb-4 text-2xl">Your Big Three</h2>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <BigThreeCard icon="☉" label="Sun" sign={sun?.sign} degree={sun?.signDegree ?? undefined} house={sun?.house ?? undefined} element={sun?.sign ? getElement(sun.sign) : ""} />
+          <BigThreeCard icon="☽" label="Moon" sign={moon?.sign} degree={moon?.signDegree ?? undefined} house={moon?.house ?? undefined} element={moon?.sign ? getElement(moon.sign) : ""} />
+          <BigThreeCard icon="↑" label="Rising" sign={risingSign} degree={snapshot.houses?.[0]?.signDegree} house={1} element={risingSign ? getElement(risingSign) : ""} muted={!risingSign} />
         </div>
       </section>
 
-      {/* Section 2: What this means — plain language interpretation */}
-      <section className="card p-6 sm:p-8">
-        <h2 className="text-2xl">What this means for you</h2>
-        <div className="mt-4 space-y-4 text-ink-soft">
-          <p>
-            Your <strong className="text-ink">Sun in {sun?.sign}</strong> means your core self is{" "}
-            {sun?.sign ? SIGN_QUALITIES[sun.sign]?.toLowerCase().replace(/\.$/, "") : "developing"}.
-            This is the central project of who you are becoming.
-          </p>
-          <p>
-            Your <strong className="text-ink">Moon in {moon?.sign}</strong> describes your inner
-            emotional climate — how you process feelings and find comfort.
-            {moon?.sign ? ` Think of it as your emotional foundation: ${SIGN_QUALITIES[moon.sign]?.toLowerCase()}` : ""}
-          </p>
-          {risingSign ? (
-            <p>
-              Your <strong className="text-ink">Rising sign in {risingSign}</strong> is the first
-              impression you give — the lens through which others meet you before they know you well.
+      {/* Deep Reading CTA */}
+      <section className="card overflow-hidden p-6 sm:p-8">
+        <div className="flex flex-col gap-4">
+          <div>
+            <h2 className="text-2xl">Your full reading</h2>
+            <p className="mt-1 text-ink-soft">
+              A comprehensive, personalized 4000+ word interpretation of your chart — covering your core identity,
+              planetary deep dive, aspect dynamics, chart patterns, numerology, growth edges, and practical guidance.
+              Generated by AI, grounded in your real Swiss Ephemeris positions.
             </p>
-          ) : (
-            <p className="text-warn">
-              We couldn't calculate your Rising sign because no birth time was provided. That's honest —
-              we won't invent one.
-            </p>
+          </div>
+
+          {!deepReading && !deepLoading && (
+            <button onClick={generateReading} className="btn-primary w-fit text-base">
+              ✦ Reveal my deep reading
+            </button>
+          )}
+
+          {deepLoading && (
+            <div className="flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="h-5 w-5 animate-spin rounded-full border-2 border-line border-t-primary" />
+                <p className="text-ink-soft">Generating your personalized reading (30-60 seconds)…</p>
+              </div>
+              <p className="text-sm text-ink-faint">This is a deep, multi-section analysis written specifically for your chart. It takes time to do well.</p>
+            </div>
+          )}
+
+          {deepError && (
+            <div className="flex flex-col gap-3">
+              <p className="rounded-xl bg-[color:var(--bg-subtle)] px-4 py-3 text-sm text-warn">{deepError}</p>
+              <button onClick={generateReading} className="btn-ghost w-fit text-sm">Try again</button>
+            </div>
+          )}
+
+          {deepReading && (
+            <div className="flex flex-col gap-2">
+              <button onClick={generateReading} className="btn-ghost w-fit text-sm">↺ Regenerate</button>
+              <p className="text-xs text-ink-faint">Generated by {deepModel}</p>
+            </div>
           )}
         </div>
       </section>
 
-      {/* Section 3: All planets — clean table */}
+      {/* Deep Reading Content */}
+      {deepReading && (
+        <section className="card p-6 sm:p-10">
+          <div
+            className="deep-reading-content max-w-none"
+            dangerouslySetInnerHTML={{ __html: renderMarkdown(deepReading) }}
+          />
+        </section>
+      )}
+
+      {/* All Planets — detailed table */}
       <section>
-        <h2 className="text-2xl">All your planets</h2>
-        <p className="mt-1 text-sm text-ink-faint">Exact positions, to the arc-minute.</p>
-        <div className="card mt-4 overflow-x-auto">
+        <h2 className="mb-4 text-2xl">All planetary positions</h2>
+        <div className="card overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="border-b border-line bg-[color:var(--bg-subtle)] text-ink-faint">
               <tr>
                 <th className="px-4 py-3 font-medium">Planet</th>
                 <th className="px-4 py-3 font-medium">Sign</th>
                 <th className="px-4 py-3 font-medium">Degree</th>
+                <th className="px-4 py-3 font-medium">House</th>
                 <th className="px-4 py-3 font-medium">Direction</th>
-                {snapshot.houses?.length > 0 && <th className="px-4 py-3 font-medium">House</th>}
               </tr>
             </thead>
             <tbody>
               {snapshot.planets.map((p) => (
                 <tr key={p.planet} className="border-b border-line last:border-0">
-                  <td className="px-4 py-2.5 font-medium">{p.planet}</td>
-                  <td className="px-4 py-2.5">{p.sign}</td>
+                  <td className="px-4 py-2.5 font-medium">
+                    <span className="mr-1.5 text-base">{PLANET_SYMBOLS[p.planet] || ""}</span>
+                    {p.planet}
+                  </td>
+                  <td className="px-4 py-2.5">{p.sign} <span className={`text-xs ${ELEMENT_COLORS[getElement(p.sign)] || ""}`}>{getElement(p.sign)}</span></td>
                   <td className="px-4 py-2.5 font-mono">{p.signDegree.toFixed(2)}°</td>
+                  <td className="px-4 py-2.5 text-ink-faint">{p.house || "—"}</td>
                   <td className="px-4 py-2.5 text-ink-faint">{p.isRetrograde ? "℞ Retrograde" : "Direct"}</td>
-                  {snapshot.houses?.length > 0 && <td className="px-4 py-2.5 text-ink-faint">{p.house || "—"}</td>}
                 </tr>
               ))}
             </tbody>
@@ -134,42 +191,54 @@ export default function Reading({ data }: { data: CalculateResponse }) {
         </div>
       </section>
 
-      {/* Section 4: Key aspects — in plain language */}
-      {snapshot.aspects.length > 0 && (
+      {/* Houses */}
+      {snapshot.houses?.length > 0 && (
         <section>
-          <h2 className="text-2xl">How your planets interact</h2>
-          <p className="mt-1 text-sm text-ink-faint">
-            The conversations between your planets — what's easy, what creates growth.
-          </p>
-          <div className="mt-4 grid gap-2">
-            {snapshot.aspects.slice(0, 12).map((a, i) => (
-              <div key={i} className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg px-4 py-2.5 odd:bg-[color:var(--bg-subtle)]">
-                <span className="font-medium">
-                  {a.planet1} <span className="text-ink-faint">·</span> {a.type} <span className="text-ink-faint">·</span> {a.planet2}
-                </span>
-                <span className="text-sm text-ink-soft">
-                  {ASPECT_PLAIN[a.type] ?? a.type}
-                  <span className="ml-2 font-mono text-xs text-ink-faint">orb {a.orb.toFixed(1)}°</span>
-                </span>
+          <h2 className="mb-4 text-2xl">House cusps</h2>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+            {snapshot.houses.map((h) => (
+              <div key={h.house} className="card p-3 text-center">
+                <p className="text-xs text-ink-faint">House {h.house}</p>
+                <p className="mt-1 text-lg font-medium">{h.sign}</p>
+                <p className="font-mono text-xs text-ink-faint">{h.signDegree.toFixed(1)}°</p>
               </div>
             ))}
           </div>
         </section>
       )}
 
-      {/* Section 5: Patterns */}
-      {snapshot.patterns.length > 0 && (
+      {/* Top Aspects */}
+      {topAspects.length > 0 && (
         <section>
-          <h2 className="text-2xl">Notable patterns in your chart</h2>
-          <div className="mt-4 flex flex-col gap-3">
-            {snapshot.patterns.slice(0, 5).map((p, i) => (
+          <h2 className="mb-4 text-2xl">Key aspects</h2>
+          <div className="grid gap-2">
+            {topAspects.map((a, i) => (
+              <div key={i} className="flex flex-wrap items-baseline justify-between gap-2 rounded-lg px-4 py-2.5 odd:bg-[color:var(--bg-subtle)]">
+                <span className="font-medium">
+                  <span className="text-base">{PLANET_SYMBOLS[a.planet1] || ""}</span> {a.planet1}
+                  <span className="mx-2 text-ink-faint">{a.type}</span>
+                  <span className="text-base">{PLANET_SYMBOLS[a.planet2] || ""}</span> {a.planet2}
+                </span>
+                <span className="font-mono text-xs text-ink-faint">orb {a.orb.toFixed(2)}°</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* Patterns */}
+      {snapshot.patterns?.length > 0 && (
+        <section>
+          <h2 className="mb-4 text-2xl">Chart patterns</h2>
+          <div className="flex flex-col gap-3">
+            {snapshot.patterns.slice(0, 6).map((p, i) => (
               <div key={i} className="card border-l-4 border-l-primary p-5">
-                <p className="font-serif text-lg text-primary">
-                  {p.type.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())}
-                </p>
-                <p className="mt-1 text-sm text-ink-soft">
-                  {PATTERN_PLAIN[p.type] ?? p.description?.split(".")[0] ?? "A significant configuration."}
-                </p>
+                <div className="flex items-center justify-between">
+                  <p className="font-serif text-lg text-primary">
+                    {p.type.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
+                  </p>
+                  <span className="font-mono text-xs text-ink-faint">{(p.strength || 0).toFixed(0)}/100</span>
+                </div>
                 {p.planets && p.planets.length > 0 && (
                   <p className="mt-2 font-mono text-xs text-ink-faint">{p.planets.join(" · ")}</p>
                 )}
@@ -179,15 +248,12 @@ export default function Reading({ data }: { data: CalculateResponse }) {
         </section>
       )}
 
-      {/* Section 6: Name numerology */}
+      {/* Numerology */}
       {snapshot.numerology?.systems && (
         <section>
-          <h2 className="text-2xl">Your name in numbers</h2>
-          <p className="mt-1 text-sm text-ink-faint">
-            Five traditions, each mapping your letters to numbers differently.
-          </p>
-          <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-            {Object.entries(snapshot.numerology.systems).map(([id, s]) => (
+          <h2 className="mb-4 text-2xl">Name numerology — five traditions</h2>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {Object.entries(snapshot.numerology.systems).map(([id, s]: [string, any]) => (
               <div key={id} className="card p-4">
                 <p className="text-xs uppercase tracking-wide text-ink-faint">{id}</p>
                 <div className="mt-2 flex items-baseline gap-2">
@@ -200,13 +266,13 @@ export default function Reading({ data }: { data: CalculateResponse }) {
             ))}
           </div>
           {snapshot.numerology.coreNumbers && (
-            <div className="mt-4 card p-5">
-              <p className="text-xs uppercase tracking-wide text-ink-faint mb-3">Core numbers</p>
-              <div className="flex flex-wrap gap-4">
-                {Object.entries(snapshot.numerology.coreNumbers).map(([k, v]) => (
+            <div className="mt-3 card p-5">
+              <p className="mb-3 text-xs uppercase tracking-wide text-ink-faint">Core numbers</p>
+              <div className="flex flex-wrap gap-6">
+                {Object.entries(snapshot.numerology.coreNumbers).map(([k, v]: [string, any]) => (
                   <div key={k} className="flex items-baseline gap-2">
-                    <span className="text-sm text-ink-faint">{k.replace(/([A-Z])/g, " $1").replace(/^./, c => c.toUpperCase())}:</span>
-                    <span className="font-mono text-lg font-medium">{v}</span>
+                    <span className="text-sm text-ink-faint">{k.replace(/([A-Z])/g, " $1").replace(/^./, (c) => c.toUpperCase())}:</span>
+                    <span className="font-mono text-lg font-medium">{v ?? "—"}</span>
                   </div>
                 ))}
               </div>
@@ -218,31 +284,28 @@ export default function Reading({ data }: { data: CalculateResponse }) {
   );
 }
 
-function BigThreeCard({
-  label,
-  sign,
-  degree,
-  meaning,
-  note,
-  muted,
-}: {
+function BigThreeCard({ icon, label, sign, degree, house, element, muted }: {
+  icon: string;
   label: string;
   sign?: string;
   degree?: number;
-  meaning?: string;
-  note: string;
+  house?: number;
+  element?: string;
   muted?: boolean;
 }) {
   return (
-    <div className={muted ? "opacity-60" : ""}>
-      <p className="text-xs uppercase tracking-wide text-ink-faint">{label}</p>
-      <p className="mt-1 font-serif text-3xl">{sign ?? "—"}</p>
+    <div className={`card p-5 ${muted ? "opacity-60" : ""}`}>
+      <div className="flex items-center justify-between">
+        <span className="text-3xl">{icon}</span>
+        {element && <span className={`text-xs font-medium ${ELEMENT_COLORS[element] || ""}`}>{element}</span>}
+      </div>
+      <p className="mt-3 text-xs uppercase tracking-wide text-ink-faint">{label}</p>
+      <p className="font-serif text-2xl">{sign ?? "—"}</p>
       {degree !== undefined && (
         <p className="font-mono text-sm text-ink-soft">{degree.toFixed(2)}°</p>
       )}
-      <p className="mt-2 text-xs text-ink-faint">{note}</p>
-      {meaning && !muted && (
-        <p className="mt-2 text-sm text-ink-soft">{meaning}</p>
+      {house !== undefined && (
+        <p className="mt-1 text-xs text-ink-faint">House {house}</p>
       )}
     </div>
   );

@@ -39,7 +39,7 @@ function ScrollTop() {
 
 export default function App() {
   return (
-    <div className="flex min-h-screen flex-col">
+    <div className="cosmic-bg flex min-h-screen flex-col">
       <ScrollTop />
       <Nav />
       <main className="flex-1">
@@ -59,14 +59,14 @@ export default function App() {
           <Route path="*" element={<NotFound />} />
         </Routes>
       </main>
-      <footer className="mt-16 border-t border-line">
-        <div className="container-prose flex flex-col gap-2 py-10 text-sm text-ink-faint">
+      <footer className="mt-16 border-t border-[hsl(var(--border))]">
+        <div className="container-wide flex flex-col gap-2 py-10 text-sm text-[hsl(var(--muted-foreground))]">
           <div className="flex flex-wrap items-center gap-x-4 gap-y-2">
-            <Link to="/" className="font-serif text-base font-semibold text-ink">NatalTruth</Link>
-            <Link to="/reading" className="hover:text-ink">My chart</Link>
-            <Link to="/compatibility" className="hover:text-ink">Compatibility</Link>
-            <Link to="/blog" className="hover:text-ink">Blog</Link>
-            <span className="text-trust">Swiss Ephemeris · Tropical · Placidus</span>
+            <Link to="/" className="font-[Cinzel] text-base font-semibold text-[hsl(var(--foreground))]">NatalTruth</Link>
+            <Link to="/reading" className="hover:text-[hsl(var(--foreground))]">My chart</Link>
+            <Link to="/compatibility" className="hover:text-[hsl(var(--foreground))]">Compatibility</Link>
+            <Link to="/blog" className="hover:text-[hsl(var(--foreground))]">Blog</Link>
+            <span className="text-[hsl(var(--primary))]">Swiss Ephemeris · Tropical · Placidus</span>
           </div>
           <p>Calculated to the arc-minute. Nothing invented. Made to be read and shared.</p>
         </div>

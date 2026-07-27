@@ -255,7 +255,7 @@ app.post("/v1/gematria", async (req, res) => {
 });
 
 // ── Chat (OpenRouter, grounded coaching) ───────────────────────────
-import { chatCompletion } from "./openrouter.js";
+import { chatCompletion, generateDeepReading } from "./openrouter.js";
 
 const ChatBody = z.object({
   message: z.string().min(1),
@@ -288,6 +288,22 @@ app.post("/chat", async (req, res) => {
     res.json({ ok: true, response, model, session_id: body.session_id || null });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Chat failed";
+    res.status(msg.includes("not configured") ? 503 : 500).json({ ok: false, error: msg });
+  }
+});
+
+// ── Deep reading generation ─────────────────────────────────────────
+app.post("/v1/reading/deep", async (req, res) => {
+  try {
+    const snapshot = req.body?.snapshot;
+    if (!snapshot) {
+      res.status(400).json({ ok: false, error: "snapshot is required in the request body." });
+      return;
+    }
+    const { reading, model } = await generateDeepReading(snapshot);
+    res.json({ ok: true, reading, model });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Deep reading failed";
     res.status(msg.includes("not configured") ? 503 : 500).json({ ok: false, error: msg });
   }
 });

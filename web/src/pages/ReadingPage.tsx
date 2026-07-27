@@ -15,7 +15,7 @@ export default function ReadingPage() {
   const [saving, setSaving] = useState(false);
 
   return (
-    <div className="container-prose py-10 sm:py-14">
+    <div className="mx-auto w-full max-w-5xl px-5 py-10 sm:py-14">
       {!result && (
         <div className="mb-8 max-w-2xl">
           <h1 className="text-3xl sm:text-4xl">Your reading</h1>
@@ -85,7 +85,7 @@ export default function ReadingPage() {
             </div>
           )}
 
-          <div className="grid gap-12 lg:grid-cols-[1fr_22rem]">
+          <div className="grid gap-10 lg:grid-cols-[1fr_20rem]">
             <Reading data={result} />
             <aside className="lg:sticky lg:top-20 lg:self-start">
               <ShareCard data={result} />

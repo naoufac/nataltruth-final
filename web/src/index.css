@@ -2,156 +2,195 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── NatalTruth brand tokens — see BRAND.md. Warm paper + ink + one clay accent. ── */
-:root {
-  --bg:           #FAF7F2;
-  --bg-elevated:  #FFFFFF;
-  --bg-subtle:    #F1ECE3;
-  --ink:          #1F1B16;
-  --ink-soft:     #5C544A;
-  --ink-faint:    #8A8077;
-  --line:         #E4DCCF;
-
-  --primary:      #BF5A36;
-  --primary-ink:  #8E3F24;
-  --primary-soft: #F3E0D6;
-
-  --trust:        #3F6B5A;
-  --trust-soft:   #DCE7E0;
-
-  --warn:         #B5792B;
-}
-
-[data-theme="dark"] {
-  --bg:           #16140F;
-  --bg-elevated:  #211E18;
-  --bg-subtle:    #2C281F;
-  --ink:          #F2EDE4;
-  --ink-soft:     #C4BBAE;
-  --ink-faint:    #948B7E;
-  --line:         #3A352B;
-
-  --primary:      #D8794F;
-  --primary-ink:  #EAA081;
-  --primary-soft: #3A2418;
-
-  --trust:        #7FB39A;
-  --trust-soft:   #24332C;
-
-  --warn:         #D9A85B;
-}
+/* ═══ NatalTruth Design System — cosmic, glass, premium ═══ */
 
 @layer base {
   :root {
-    --font-base: 17.5px;
+    --background: 240 15% 6%;
+    --foreground: 40 20% 96%;
+    --card: 240 15% 8%;
+    --card-foreground: 40 20% 96%;
+    --primary: 38 92% 55%;
+    --primary-foreground: 240 15% 8%;
+    --secondary: 240 10% 14%;
+    --secondary-foreground: 40 20% 96%;
+    --muted: 240 10% 14%;
+    --muted-foreground: 240 5% 55%;
+    --border: 240 10% 18%;
+    --radius: 0.75rem;
+    --chart-1: 38 92% 55%;
+    --chart-2: 240 60% 60%;
+    --chart-3: 280 60% 50%;
+    --chart-4: 200 70% 50%;
+    --chart-5: 340 70% 50%;
   }
-  html {
-    -webkit-text-size-adjust: 100%;
-  }
-  body {
-    background-color: var(--bg);
-    color: var(--ink);
-    font-family: "Inter", system-ui, -apple-system, sans-serif;
-    font-size: var(--font-base);
-    line-height: 1.6;
-    -webkit-font-smoothing: antialiased;
-    text-rendering: optimizeLegibility;
-  }
-  h1, h2, h3 {
-    font-family: "Fraunces", "Source Serif Pro", Georgia, serif;
-    font-weight: 500;
-    letter-spacing: -0.01em;
-    line-height: 1.15;
-    color: var(--ink);
-  }
-  a {
-    color: var(--primary-ink);
-    text-decoration: none;
-  }
-  a:hover { text-decoration: underline; }
-  ::selection {
-    background: var(--primary-soft);
-    color: var(--primary-ink);
-  }
-}
 
-/* Reading mode — wider, calmer, for long-form articles. */
-.reading-mode .prose {
-  font-family: "Fraunces", Georgia, serif;
-  font-size: 1.05em;
-  line-height: 1.7;
+  [data-theme="light"] {
+    --background: 35 40% 96%;
+    --foreground: 240 10% 12%;
+    --card: 36 35% 99%;
+    --card-foreground: 240 10% 12%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 35 25% 91%;
+    --secondary-foreground: 240 10% 20%;
+    --muted: 35 25% 91%;
+    --muted-foreground: 240 5% 42%;
+    --border: 35 20% 85%;
+  }
+
+  * { border-color: hsl(var(--border)); }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-family: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+    line-height: 1.7;
+    -webkit-font-smoothing: antialiased;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+
+  h1, h2, h3, h4 {
+    font-family: "Cinzel", serif;
+    line-height: 1.2;
+    font-weight: 600;
+  }
+  h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
+  h2 { font-size: clamp(1.5rem, 4vw, 2.5rem); }
+
+  a { color: hsl(var(--primary)); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  ::selection { background: hsl(var(--primary) / 0.25); color: hsl(var(--foreground)); }
+  ::-webkit-scrollbar { width: 10px; }
+  ::-webkit-scrollbar-track { background: hsl(var(--muted)); }
+  ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 5px; }
 }
-.reading-mode .prose p { max-width: 64ch; }
 
 @layer components {
-  .container-prose {
-    @apply mx-auto w-full max-w-prose px-5;
+  /* ── Cosmic background ── */
+  .cosmic-bg {
+    background:
+      radial-gradient(ellipse at top left, hsl(240 60% 20% / 0.15) 0%, transparent 45%),
+      radial-gradient(ellipse at bottom right, hsl(38 92% 50% / 0.08) 0%, transparent 40%),
+      hsl(var(--background));
   }
-  .card {
-    background-color: var(--bg-elevated);
-    border: 1px solid var(--line);
-    @apply rounded-2xl;
+  [data-theme="light"] .cosmic-bg {
+    background:
+      radial-gradient(ellipse at top left, hsl(245 50% 60% / 0.08) 0%, transparent 45%),
+      radial-gradient(ellipse at bottom right, hsl(38 92% 50% / 0.06) 0%, transparent 40%),
+      hsl(var(--background));
   }
-  .btn-primary {
-    background-color: var(--primary);
-    color: #fff;
-    @apply inline-flex items-center justify-center gap-2 rounded-full px-6 py-3 font-medium transition;
+
+  /* ── Glass cards ── */
+  .glass-card {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border) / 0.6);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    border-radius: var(--radius);
+    transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
   }
-  .btn-primary:hover { background-color: var(--primary-ink); }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; }
-  .btn-ghost {
-    color: var(--ink-soft);
-    @apply inline-flex items-center gap-2 rounded-full px-4 py-2 transition;
+  .glass-card:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border-color: hsl(var(--primary) / 0.3);
   }
-  .btn-ghost:hover { color: var(--ink); background-color: var(--bg-subtle); }
-  .label {
-    @apply mb-1.5 block text-sm font-medium;
-    color: var(--ink-soft);
+
+  /* ── Buttons ── */
+  .btn-glow {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 4px 20px hsl(var(--primary) / 0.25);
+    transition: box-shadow 0.3s ease, transform 0.3s ease;
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-medium;
   }
+  .btn-glow:hover {
+    box-shadow: 0 6px 28px hsl(var(--primary) / 0.4);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
+  .btn-outline {
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    @apply inline-flex items-center gap-2 rounded-xl px-6 py-3 font-medium transition;
+  }
+  .btn-outline:hover { background: hsl(var(--muted)); text-decoration: none; }
+
+  /* ── Inputs ── */
   .input {
-    background-color: var(--bg-elevated);
-    border: 1px solid var(--line);
-    color: var(--ink);
+    background: hsl(var(--card) / 0.5);
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
     @apply w-full rounded-xl px-4 py-3 outline-none transition;
   }
-  .input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px var(--primary-soft); }
+  .input:focus {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
+  }
+  .label {
+    @apply mb-1.5 block text-sm font-medium;
+    color: hsl(var(--muted-foreground));
+  }
+
+  /* ── Layout ── */
+  .container-wide { @apply mx-auto w-full max-w-6xl px-5; }
+  .container-prose { @apply mx-auto w-full max-w-4xl px-5; }
+
+  /* ── Chips ── */
   .chip {
-    background-color: var(--bg-subtle);
-    color: var(--ink-soft);
+    background: hsl(var(--primary) / 0.1);
+    border: 1px solid hsl(var(--primary) / 0.2);
+    color: hsl(var(--primary));
     @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
   }
-  /* Long-form article typography */
-  .prose {
-    color: var(--ink);
+
+  /* ── Deep reading content ── */
+  .deep-reading { color: hsl(var(--foreground)); line-height: 1.8; }
+  .deep-reading h2 {
+    font-size: 1.5em; margin-top: 2em; margin-bottom: 0.5em;
+    color: hsl(var(--foreground)); border-bottom: 1px solid hsl(var(--border) / 0.5);
+    padding-bottom: 0.3em;
   }
-  .prose h2, .prose h3, .prose h4 {
-    margin-top: 1.8em;
-    margin-bottom: 0.5em;
-    font-family: "Fraunces", Georgia, serif;
+  .deep-reading h2:first-child { margin-top: 0; }
+  .deep-reading h3 { font-size: 1.2em; margin-top: 1.5em; color: hsl(var(--muted-foreground)); }
+  .deep-reading p { margin: 0 0 1.1em; color: hsl(var(--foreground) / 0.82); }
+  .deep-reading strong { color: hsl(var(--primary)); font-weight: 600; }
+  .deep-reading em { color: hsl(var(--foreground)); }
+  .deep-reading ul, .deep-reading ol { margin: 0 0 1.1em; padding-left: 1.5em; color: hsl(var(--foreground) / 0.82); }
+  .deep-reading li { margin-bottom: 0.5em; list-style: disc; }
+  .deep-reading ol li { list-style: decimal; }
+  .deep-reading blockquote {
+    border-left: 3px solid hsl(var(--primary));
+    padding: 0.8em 1.2em; margin: 1.4em 0;
+    background: hsl(var(--primary) / 0.05);
+    border-radius: 0 12px 12px 0;
+    color: hsl(var(--foreground));
   }
-  .prose p {
-    margin: 0 0 1.1em;
-    max-width: 68ch;
-  }
-  .prose ul, .prose ol {
-    margin: 0 0 1.1em;
-    padding-left: 1.4em;
-    max-width: 68ch;
-  }
+  .deep-reading blockquote p { margin: 0; }
+  .deep-reading hr { border: none; border-top: 1px solid hsl(var(--border)); margin: 2em 0; }
+
+  /* ── Prose (blog) ── */
+  .prose { color: hsl(var(--foreground)); }
+  .prose h2, .prose h3 { margin-top: 1.8em; margin-bottom: 0.5em; }
+  .prose p { margin: 0 0 1.1em; max-width: 68ch; color: hsl(var(--foreground) / 0.82); }
+  .prose ul, .prose ol { margin: 0 0 1.1em; padding-left: 1.4em; max-width: 68ch; }
   .prose li { margin-bottom: 0.4em; }
-  .prose blockquote {
-    border-left: 3px solid var(--primary);
-    padding-left: 1em;
-    margin: 1.2em 0;
-    color: var(--ink-soft);
-    font-style: italic;
-  }
-  .prose code {
-    font-family: "JetBrains Mono", monospace;
-    background: var(--bg-subtle);
-    padding: 0.1em 0.35em;
-    border-radius: 4px;
-    font-size: 0.9em;
-  }
-  .prose strong { color: var(--ink); }
+  .prose blockquote { border-left: 3px solid hsl(var(--primary)); padding-left: 1em; margin: 1.2em 0; color: hsl(var(--muted-foreground)); font-style: italic; }
+  .prose code { font-family: "JetBrains Mono", monospace; background: hsl(var(--muted)); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+}
+
+/* ── Animations ── */
+@keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.2); } 50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.4); } }
+
+.fade-in { animation: fadeIn 0.6s ease-out forwards; }
+.animate-float { animation: float 6s ease-in-out infinite; }
+.animate-pulse-glow { animation: pulseGlow 3s ease-in-out infinite; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }

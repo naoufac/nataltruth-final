@@ -28,7 +28,7 @@ const Ctx = createContext<PrefsCtx | null>(null);
 function load(): Prefs {
   const stored = localStorage.getItem("nt-prefs");
   const sys: Theme =
-    window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    window.matchMedia?.("(prefers-color-scheme: light)").matches ? "light" : "dark";
   if (stored) {
     try {
       const p = JSON.parse(stored);
