@@ -54,7 +54,7 @@ const TIER_ICONS = {
 
 export default function AdminPage() {
   const { theme, toggleTheme } = useTheme();
-  const { token } = useAuth();
+  const { token, user } = useAuth();
   const [stats, setStats] = useState(null);
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -72,7 +72,8 @@ export default function AdminPage() {
   const fetchReadingOrders = async (filter = readingFilter) => {
     try {
       const qs = filter && filter !== "all" ? `?status=${filter}&limit=100` : "?limit=100";
-      const res = await axios.get(`${API}/admin/reading-orders${qs}`, authHeaders);
+      const emailQs = `&email=${encodeURIComponent(user?.email || "")}`;
+      const res = await axios.get(`${API}/admin/reading-orders${qs}${emailQs}`, authHeaders);
       setReadingOrders(res.data.orders || []);
       setReadingOrderMeta({
         counts: res.data.counts || {},
@@ -88,8 +89,8 @@ export default function AdminPage() {
     setLoading(true);
     try {
       const [statsRes, usersRes] = await Promise.all([
-        axios.get(`${API}/admin/stats`, authHeaders),
-        axios.get(`${API}/admin/users?limit=100`, authHeaders),
+        axios.get(`${API}/admin/stats?email=${encodeURIComponent(user?.email || "")}`, authHeaders),
+        axios.get(`${API}/admin/users?limit=100&email=${encodeURIComponent(user?.email || "")}`, authHeaders),
         fetchReadingOrders(),
       ]);
       setStats(statsRes.data);
