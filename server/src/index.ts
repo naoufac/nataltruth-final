@@ -370,6 +370,62 @@ app.get("/v1/entitlements", (req, res) => {
   });
 });
 
+// ── Admin platform stats ───────────────────────────────────────────
+app.get("/v1/admin/stats", (req, res) => {
+  const founderEmails = (process.env.FOUNDER_EMAILS || process.env.ADMIN_EMAIL || "")
+    .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  const requesterEmail = (req.query.email as string || "").trim().toLowerCase();
+  if (!founderEmails.includes(requesterEmail)) {
+    res.status(403).json({ ok: false, error: "Admin access required." });
+    return;
+  }
+
+  // User stats
+  const users = db.prepare("SELECT id, email, name, role, created_at FROM users").all() as any[];
+  const chatMsgCount = Array.from(chatSessions.values()).reduce((sum, s) => sum + s.messages.length, 0);
+
+  // Plan breakdown
+  const planBreakdown: Record<string, number> = { free: 0, monthly: 0, premium: 0, ultra: 0 };
+  for (const u of users) {
+    const isFounder = founderEmails.includes(u.email.toLowerCase());
+    const plan = isFounder ? "ultra" : "free";
+    planBreakdown[plan] = (planBreakdown[plan] || 0) + 1;
+  }
+
+  // Sun sign distribution (from saved charts)
+  const sunSigns: Record<string, number> = {};
+  try {
+    const charts = db.prepare("SELECT snapshot_json FROM charts").all() as any[];
+    for (const c of charts) {
+      try {
+        const snap = JSON.parse(c.snapshot_json);
+        const sun = snap.planets?.find((p: any) => p.planet === "Sun");
+        if (sun?.sign) sunSigns[sun.sign] = (sunSigns[sun.sign] || 0) + 1;
+      } catch {}
+    }
+  } catch {}
+
+  res.json({
+    ok: true,
+    stats: {
+      totalUsers: users.length,
+      chatMessages: chatMsgCount,
+      chatSessions: chatSessions.size,
+      advancedUsers: planBreakdown.ultra || 0,
+    },
+    planBreakdown,
+    sunSigns,
+    users: users.map(u => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      plan: founderEmails.includes(u.email.toLowerCase()) ? "ultra" : "free",
+      created_at: u.created_at,
+    })),
+  });
+});
+
 // ── Product (auth, saved charts, blog, admin CMS) ──────────────────
 app.use("/api/auth", authRouter);
 app.use("/api/charts", chartsRouter);
