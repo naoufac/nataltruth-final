@@ -81,14 +81,17 @@ Every chart response always includes: planetary positions · 12 house cusps · a
 | Truth-layer verification script (`pnpm verify:full`) | **Passing** — now includes anti-invention checks (every sign matches `floor(longitude/30)`, every aspect/pattern references a real planet) |
 | Product frontend (`web/`) | **Live** — landing, reading, compatibility grid, blog, saved charts, settings, admin CMS |
 | Auth + saved charts | **Live** — bcrypt + JWT cookie, SQLite persistence |
-| Chat (`/v1/chat`) | **Built, dormant** — Z.AI GLM-5.2 (default) with astrology-only guardrail; 503 until `ZAI_API_KEY` is set in the container |
-| Hosting | **Live** — `https://nataltruth.com/` + `https://nataltruth.135.181.44.161.sslip.io/` (SPA + same-origin API), `https://api.nataltruth.com/` (API only) |
+| Chat (`/v1/chat`) | **Live** — Z.AI GLM-5.2 (primary, via coding/paas/v4) with astrology-only guardrail, cascading to MiniMax M2.7 → Qwen 3.5 122B → GPT-4o-mini |
+| Deep reading (`/v1/reading/deep`) | **Live** — monolithic 4000+ word GLM-5.2 natal interpretation from chart snapshot |
+| Admin system map | **Live** — `https://nao.135.181.44.161.sslip.io` (architecture, API health, tech stack, model cascade, user flows, deployment topology). Activates at `nao.nataltruth.com` when DNS A record is manually repointed to `135.181.44.161` |
+| Hosting | **Live** — `https://nataltruth.com/` (SPA + same-origin API), `https://api.nataltruth.com/` (API only) |
 | Plans / payments | **Not built** — free-value-first for now |
 
 ## Use the app
 
-- **The product (the 12 pages):** <https://nataltruth.com> or <https://nataltruth.135.181.44.161.sslip.io>
+- **The product (the 20 pages):** <https://nataltruth.com>
 - **The API only:** <https://api.nataltruth.com/health>
+- **Admin system map:** <https://nao.135.181.44.161.sslip.io> (live ops dashboard with API health probes)
 - The SPA talks **same-origin** to `/v1/*` and `/api/*`; no CORS, no key required for free use.
 
 ```bash
