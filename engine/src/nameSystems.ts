@@ -379,6 +379,7 @@ export type FullNameProfile = {
     soulUrgeNumber: number;
     personalityNumber: number;
     birthDayNumber: number | null;
+    personalYearNumber: number | null;
   };
   computedAt: string;
 };
@@ -420,6 +421,21 @@ function birthDay(birthDate: string): number {
 }
 
 /**
+ * Personal Year Number (Pythagorean tradition).
+ * Reduces birth month + day + current year, then sums and reduces.
+ */
+export function calculatePersonalYear(
+  birthDate: string,
+  currentYear?: number
+): number {
+  const [, m, d] = birthDate.split("-").map(Number);
+  const year = currentYear ?? new Date().getFullYear();
+  const total =
+    reduceToSingleDigit(m) + reduceToSingleDigit(d) + reduceToSingleDigit(year);
+  return reduceToSingleDigit(total);
+}
+
+/**
  * Full multi-system name profile.
  * Always runs all five systems (empty totals if script not present).
  */
@@ -447,6 +463,7 @@ export function calculateFullNameProfile(
       soulUrgeNumber: soulUrgePythagorean(fullName),
       personalityNumber: personalityPythagorean(fullName),
       birthDayNumber: date ? birthDay(date) : null,
+      personalYearNumber: date ? calculatePersonalYear(date) : null,
     },
     computedAt: new Date().toISOString(),
   };
