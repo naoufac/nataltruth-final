@@ -51,12 +51,12 @@ export default function SettingsPage() {
   const navigate = useNavigate();
   
   const [fontSize, setFontSize] = useState(() => {
-    const stored = localStorage.getItem("nataltruth_font_size");
+    const stored = localStorage.getItem("gab44_font_size");
     return stored ? parseInt(stored) : 16;
   });
   
   const [readingMode, setReadingMode] = useState(() => {
-    return localStorage.getItem("nataltruth_reading_mode") === "true";
+    return localStorage.getItem("gab44_reading_mode") === "true";
   });
 
   const [notifications, setNotifications] = useState({
@@ -80,13 +80,13 @@ export default function SettingsPage() {
 
   const handleFontSizeChange = (value) => {
     setFontSize(value[0]);
-    localStorage.setItem("nataltruth_font_size", value[0].toString());
+    localStorage.setItem("gab44_font_size", value[0].toString());
     document.documentElement.style.setProperty("--base-font-size", `${value[0]}px`);
   };
 
   const handleReadingModeToggle = (checked) => {
     setReadingMode(checked);
-    localStorage.setItem("nataltruth_reading_mode", checked.toString());
+    localStorage.setItem("gab44_reading_mode", checked.toString());
     const root = document.documentElement;
     if (checked) {
       root.style.setProperty("--reading-line-height", "1.9");
@@ -100,10 +100,37 @@ export default function SettingsPage() {
 
   const handlePushToggle = async (checked) => {
     setPushLoading(true);
-    // No /notifications/* on api.nataltruth.com — zero 404.
-    setPushEnabled(false);
-    toast.message("Push notifications are not connected to NatalTruth API yet.");
-    setPushLoading(false);
+    try {
+      const sdk = await loadOneSignal();
+      if (!sdk) {
+        toast.error("Push notifications are not configured for this site.");
+        return;
+      }
+      if (checked) {
+        const playerId = await requestPushPermission();
+        if (playerId) {
+          await axios.post(`${API}/notifications/register-device`, { player_id: playerId }, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setPushEnabled(true);
+          toast.success("Push notifications enabled!");
+        } else {
+          toast.error("Permission denied. Please allow notifications in your browser settings.");
+        }
+      } else {
+        try {
+          await sdk.User.PushSubscription.optOut();
+        } catch {
+          // ignore — caller may already be opted out
+        }
+        setPushEnabled(false);
+        toast.success("Push notifications disabled.");
+      }
+    } catch (e) {
+      toast.error("Could not update push notification settings.");
+    } finally {
+      setPushLoading(false);
+    }
   };
 
   const handleProfileChange = (e) => {
@@ -126,29 +153,49 @@ export default function SettingsPage() {
         return;
       }
 
-      // No auth API on api.nataltruth.com — persist birth profile locally for calc.
-      updateUser({
-        ...profileEdit,
-        name: profileEdit.name || user?.name,
-        birth_name: profileEdit.birth_name || profileEdit.name,
-        birth_date: profileEdit.birth_date,
-        birth_time: profileEdit.birth_time || null,
-        birth_place: profileEdit.birth_place,
+      const response = await axios.put(`${API}/auth/me`, updates, {
+        headers: { Authorization: `Bearer ${token}` }
       });
-      toast.success("Profile saved locally (used for api.nataltruth.com calc)");
+      updateUser(response.data);
+      toast.success("Profile updated successfully");
     } catch (error) {
-      toast.error(error?.message || "Failed to save profile");
+      const status = error.response?.status;
+      const detail = error.response?.data?.detail;
+      let message;
+      if (Array.isArray(detail)) {
+        message = detail.map(e => e.msg?.replace(/^Value error,\s*/i, "") || "Validation error").join("; ");
+      } else if (detail) {
+        message = detail;
+      } else if (status === 401) {
+        message = "Unauthorized. Please log in again.";
+      } else if (status === 404) {
+        message = "Profile not found.";
+      } else {
+        message = "Failed to update profile";
+      }
+      toast.error(message);
     } finally {
       setSavingProfile(false);
     }
   };
 
   const handleManageSubscription = async () => {
-    setPortalLoading(false);
-    toast.message("Billing portal is not available yet", {
-      description: "Payments are not on api.nataltruth.com. See Pricing for plan framing only.",
-    });
-    navigate("/pricing");
+    if (user?.subscription_tier === "seeker") {
+      navigate("/pricing");
+      return;
+    }
+    setPortalLoading(true);
+    try {
+      const response = await axios.post(`${API}/payments/portal`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      window.location.href = response.data.portal_url;
+    } catch (error) {
+      const detail = error.response?.data?.detail || "Unable to open billing portal. Please try again.";
+      toast.error(detail);
+    } finally {
+      setPortalLoading(false);
+    }
   };
 
   const settingsSections = [
@@ -353,7 +400,7 @@ export default function SettingsPage() {
                 className="text-xs text-amber-400 underline underline-offset-2 hover:text-amber-300 flex-shrink-0"
                 onClick={async () => {
                   try {
-                    toast.message("Email verification is not available — profile is local only.");
+                    await axios.post(`${API}/auth/resend-verification`, {}, { headers: { Authorization: `Bearer ${token}` } });
                     toast.success("Verification email sent!");
                   } catch {
                     toast.error("Could not send email. Please try again.");
@@ -422,7 +469,7 @@ export default function SettingsPage() {
               <span className="text-sm">Back to Dashboard</span>
             </Link>
             <h1 className="font-serif text-3xl text-foreground">Settings</h1>
-            <p className="text-muted-foreground">Customize your NatalTruth experience</p>
+            <p className="text-muted-foreground">Customize your Gab44 experience</p>
           </div>
           <Settings2 className="w-8 h-8 text-muted-foreground" />
         </div>

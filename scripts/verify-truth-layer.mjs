@@ -51,10 +51,10 @@ assert(/Precision natal astrology/.test(README), "README opens with the product 
 assert(/engine\//.test(ARCH) && /server\//.test(ARCH) && /web\//.test(ARCH), "ARCHITECTURE describes the three layers");
 assert(/pure TypeScript/.test(ARCH), "ARCHITECTURE documents the engine as pure TS");
 
-assert(/POST \/v1\/calculate/.test(API), "docs/API.md documents POST /v1/calculate");
-assert(/POST \/v1\/calculate\/swiss/.test(API), "docs/API.md documents the swiss route");
-assert(/POST \/v1\/calculate\/moshier/.test(API), "docs/API.md documents the moshier route");
-assert(/POST \/v1\/name\/full/.test(API), "docs/API.md documents /v1/name/full");
+assert(/POST \/calculate(?!\/)/.test(API), "docs/API.md documents POST /calculate");
+assert(/POST \/calculate\/swiss/.test(API), "docs/API.md documents the swiss route");
+assert(/POST \/calculate\/moshier/.test(API), "docs/API.md documents the moshier route");
+assert(/POST \/name\/full/.test(API), "docs/API.md documents /name/full");
 assert(/GET \/health/.test(API), "docs/API.md documents GET /health");
 assert(/grand_trine|t_square|yod|stellium|grand_cross/.test(API), "docs/API.md lists the detected pattern types");
 
@@ -62,13 +62,13 @@ assert(/grand_trine|t_square|yod|stellium|grand_cross/.test(API), "docs/API.md l
 const serverSrc = readDoc("server/src/index.ts");
 const requiredRoutes = [
   ['app.get("/health"', "GET /health"],
-  ['app.post("/v1/calculate"', "POST /v1/calculate"],
-  ['app.post("/v1/calculate/swiss"', "POST /v1/calculate/swiss"],
-  ['app.post("/v1/calculate/moshier"', "POST /v1/calculate/moshier"],
-  ['app.get("/v1/name/systems"', "GET /v1/name/systems"],
-  ['app.post("/v1/name/full"', "POST /v1/name/full"],
-  ['app.post("/v1/gematria"', "POST /v1/gematria"],
-  ["`/v1/name/${id}`", "POST /v1/name/:system loop"],
+  ['app.post("/calculate"', "POST /calculate"],
+  ['app.post("/calculate/swiss"', "POST /calculate/swiss"],
+  ['app.post("/calculate/moshier"', "POST /calculate/moshier"],
+  ['app.get("/name/systems"', "GET /name/systems"],
+  ['app.post("/name/full"', "POST /name/full"],
+  ['app.post("/gematria"', "POST /gematria"],
+  ["`/name/${id}`", "POST /name/:system loop"],
 ];
 for (const [needle, label] of requiredRoutes) {
   assert(serverSrc.includes(needle), `server/src/index.ts registers ${label}`);

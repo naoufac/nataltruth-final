@@ -1,12 +1,8 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "@/App";
+import { useAuth, API } from "@/App";
 import { useTheme } from "@/context/ThemeContext";
-import {
-  calculateChart,
-  adaptChartForUi,
-  loadLocalProfile,
-} from "@/lib/nataltruth";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -100,50 +96,19 @@ export default function ChartPage() {
     const fetchChart = async () => {
       setChartError(null);
       try {
-        const profile = loadLocalProfile() || user || {};
-        const birth = {
-          fullName: profile.birth_name || profile.name || user?.birth_name || user?.name,
-          birth_date: profile.birth_date || user?.birth_date,
-          birth_time: profile.birth_time || user?.birth_time,
-          birth_place: profile.birth_place || user?.birth_place,
-          latitude: profile.latitude ?? user?.latitude,
-          longitude: profile.longitude ?? user?.longitude,
-          utc_offset: profile.utc_offset || user?.utc_offset,
-          timezone: profile.timezone || user?.timezone,
-        };
-
-        if (!birth.birth_date) {
-          setChartError(
-            "Add your birth date (and place coordinates) in Settings / registration to calculate your chart via api.nataltruth.com."
-          );
-          return;
-        }
-        if (birth.latitude == null || birth.longitude == null) {
-          setChartError(
-            "Latitude and longitude are required. Set them in your profile (Settings) so the chart can call api.nataltruth.com."
-          );
-          return;
-        }
-
-        const engine =
-          (typeof window !== "undefined" &&
-            localStorage.getItem("nataltruth_engine")) ||
-          "swiss";
-        const apiResponse = await calculateChart(birth, engine);
-        const adapted = adaptChartForUi(apiResponse, birth);
-        setChart(adapted);
-
-        const name = birth.fullName || "";
+        const response = await axios.get(`${API}/chart/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setChart(response.data);
+        // Pre-populate gematria with user's name
+        const name = user?.birth_name || user?.name || "";
         if (name) {
           setGematriaInput(name);
           setGematriaResult(computeGematria(name));
         }
       } catch (error) {
-        console.error("Error calculating chart:", error);
-        setChartError(
-          error?.message ||
-            "Could not calculate your birth chart via api.nataltruth.com."
-        );
+        console.error("Error fetching chart:", error);
+        setChartError("Could not load your birth chart. Please try again.");
       } finally {
         setLoading(false);
       }

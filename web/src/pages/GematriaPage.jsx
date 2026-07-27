@@ -1,7 +1,8 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
+import { API } from "@/App";
 import { useTheme } from "@/context/ThemeContext";
-import { nameFull, adaptGematriaForUi } from "@/lib/nataltruth";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { 
@@ -112,13 +113,11 @@ export default function GematriaPage() {
     setCalcError(null);
     setLoading(true);
     try {
-      const profile = await nameFull(text, null);
-      setResult(adaptGematriaForUi(profile, text));
+      const response = await axios.post(`${API}/gematria/calculate`, { text });
+      setResult(response.data);
     } catch (error) {
       console.error("Error calculating gematria:", error);
-      setCalcError(
-        error?.message || "Calculation failed via api.nataltruth.com."
-      );
+      setCalcError("Calculation failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -191,7 +190,7 @@ export default function GematriaPage() {
 
           {/* Quick examples */}
           <div className="flex flex-wrap gap-2 mt-4">
-            {["NatalTruth", "Love", "Truth", "Peace"].map((example) => (
+            {["Gab44", "Love", "Truth", "Peace"].map((example) => (
               <Button
                 key={example}
                 variant="outline"

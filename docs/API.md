@@ -11,9 +11,9 @@ Only the endpoints listed here are live. Nothing else is implied. Every chart re
 
 | Engine | Route | Notes |
 |--------|-------|-------|
-| **Swiss Ephemeris** | `POST /v1/calculate/swiss` | High precision. Default. |
-| **Moshier** | `POST /v1/calculate/moshier` | Semi-analytic cross-check; no external ephemeris files. |
-| Generic | `POST /v1/calculate` | Body field `engineMode: "swiss" \| "moshier"` (default `swiss`). |
+| **Swiss Ephemeris** | `POST /calculate/swiss` | High precision. Default. |
+| **Moshier** | `POST /calculate/moshier` | Semi-analytic cross-check; no external ephemeris files. |
+| Generic | `POST /calculate` | Body field `engineMode: "swiss" \| "moshier"` (default `swiss`). |
 
 ### Request body (JSON)
 
@@ -81,16 +81,16 @@ Errors: `{ "ok": false, "error": "human-readable message" }`.
 
 | System | Range | Route |
 |--------|-------|-------|
-| Pythagorean | 1–9, Latin | `POST /v1/name/pythagorean` |
-| Chaldean | 1–8 (no letter 9) | `POST /v1/name/chaldean` |
-| Arabic Abjad | 1–1000, Arabic script | `POST /v1/name/abjad` |
-| Hebrew (Mispar Hechrechi) | 1–400, Hebrew script | `POST /v1/name/hebrew` |
-| Indian (Vedic) | 1–8, Chaldean on Latin | `POST /v1/name/vedic` |
-| **All at once** | — | `POST /v1/name/full` |
-| List systems | — | `GET /v1/name/systems` |
-| Alias | — | `POST /v1/gematria` |
+| Pythagorean | 1–9, Latin | `POST /name/pythagorean` |
+| Chaldean | 1–8 (no letter 9) | `POST /name/chaldean` |
+| Arabic Abjad | 1–1000, Arabic script | `POST /name/abjad` |
+| Hebrew (Mispar Hechrechi) | 1–400, Hebrew script | `POST /name/hebrew` |
+| Indian (Vedic) | 1–8, Chaldean on Latin | `POST /name/vedic` |
+| **All at once** | — | `POST /name/full` |
+| List systems | — | `GET /name/systems` |
+| Alias | — | `POST /gematria` |
 
-Name body: `{ "fullName": "…", "birthDate": "YYYY-MM-DD" }` (`birthDate` optional except for `/v1/gematria` and core-number fields in `/full`).
+Name body: `{ "fullName": "…", "birthDate": "YYYY-MM-DD" }` (`birthDate` optional except for `/gematria` and core-number fields in `/full`).
 
 **Truth:** Abjad requires Arabic letters; Hebrew requires Hebrew letters. Latin-only input correctly returns total `0` for those two systems — that is documented behavior, not a bug.
 

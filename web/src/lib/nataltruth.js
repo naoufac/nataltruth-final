@@ -19,14 +19,14 @@ const http = axios.create({
  */
 export async function calculateChart(birth, engine = "swiss") {
   const path =
-    engine === "moshier" ? "/v1/calculate/moshier" : "/v1/calculate/swiss";
+    engine === "moshier" ? "/calculate/moshier" : "/calculate/swiss";
   const { data } = await http.post(path, toCalculateBody(birth));
   if (!data?.ok) throw new Error(data?.error || "Calculate failed");
   return data;
 }
 
 export async function nameFull(fullName, birthDate) {
-  const { data } = await http.post("/v1/name/full", {
+  const { data } = await http.post("/name/full", {
     fullName,
     birthDate: birthDate || null,
   });
@@ -35,7 +35,7 @@ export async function nameFull(fullName, birthDate) {
 }
 
 export async function nameSystem(system, fullName) {
-  const { data } = await http.post(`/v1/name/${system}`, { fullName });
+  const { data } = await http.post(`/name/${system}`, { fullName });
   if (!data?.ok) throw new Error(data?.error || `${system} failed`);
   return data.result;
 }
@@ -45,7 +45,7 @@ export async function nameSystem(system, fullName) {
  * Matches ChatPage contract: { message, session_id } → { response, session_id }.
  */
 export async function chatMessage(message, sessionId = null, context = null) {
-  const { data } = await http.post("/v1/chat", {
+  const { data } = await http.post("/chat", {
     message,
     session_id: sessionId || null,
     context: context || null,
@@ -57,17 +57,17 @@ export async function chatMessage(message, sessionId = null, context = null) {
 }
 
 export async function chatSessions() {
-  const { data } = await http.get("/v1/chat/sessions");
+  const { data } = await http.get("/chat/sessions");
   return Array.isArray(data) ? data : data?.sessions || [];
 }
 
 export async function chatHistory(sessionId) {
-  const { data } = await http.get(`/v1/chat/history/${sessionId}`);
+  const { data } = await http.get(`/chat/history/${sessionId}`);
   return Array.isArray(data) ? data : data?.messages || [];
 }
 
 export async function chatDeleteSession(sessionId) {
-  await http.delete(`/v1/chat/session/${sessionId}`);
+  await http.delete(`/chat/session/${sessionId}`);
 }
 
 // ─── Request mapping ─────────────────────────────────────────────────
@@ -294,7 +294,7 @@ export function clearLocalProfile() {
  */
 export async function fetchEntitlement(email) {
   if (!email?.trim()) return null;
-  const { data } = await http.get("/v1/entitlements", {
+  const { data } = await http.get("/entitlements", {
     params: { email: email.trim() },
   });
   if (!data?.ok) return null;

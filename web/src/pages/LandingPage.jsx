@@ -99,7 +99,7 @@ const Navigation = () => {
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/20 shadow-sm">
               <Sparkles className="w-5 h-5 text-primary" />
             </div>
-            <span className="font-serif text-xl font-semibold text-foreground">NatalTruth</span>
+            <span className="font-serif text-xl font-semibold text-foreground">Gab44</span>
           </Link>
 
           {/* Desktop Navigation */}
@@ -590,7 +590,7 @@ const PricingSection = () => {
         <div className="text-center mt-8">
           <p className="text-sm text-muted-foreground">
             Need more?{" "}
-            <a href="mailto:contact@nataltruth.com" className="text-primary hover:underline">Contact us</a>
+            <a href="mailto:contact@gab44.com" className="text-primary hover:underline">Contact us</a>
             {" "}for enterprise plans.
           </p>
         </div>
@@ -666,7 +666,7 @@ const FAQSection = () => {
     },
     {
       question: "Is this compatible with my religion?",
-      answer: "NatalTruth approaches astrology as a tool for self-understanding, not as a belief system. Many users of various faiths find value in the psychological and timing insights while maintaining their religious practices.",
+      answer: "Gab44 approaches astrology as a tool for self-understanding, not as a belief system. Many users of various faiths find value in the psychological and timing insights while maintaining their religious practices.",
     },
     {
       question: "Can I cancel my subscription?",
@@ -708,13 +708,14 @@ const Footer = () => {
   const handleSubscribe = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // No /subscribe on api.nataltruth.com — local ack only (zero 404).
-    await new Promise((r) => setTimeout(r, 200));
-    setDone(true);
-    setLoading(false);
-    toast.message("Newsletter API not connected yet", {
-      description: "Your email was not sent to a server. Create a profile to use live calc.",
-    });
+    try {
+      await axios.post(`${API}/subscribe`, { email, name });
+      setDone(true);
+    } catch {
+      setDone(true);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -727,7 +728,7 @@ const Footer = () => {
               <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
                 <Sparkles className="w-4 h-4 text-primary" />
               </div>
-              <span className="font-serif text-lg text-foreground">NatalTruth</span>
+              <span className="font-serif text-lg text-foreground">Gab44</span>
             </div>
             <p className="text-sm text-muted-foreground mb-6 leading-relaxed max-w-sm">
               Helping humanity align with truth — one chart at a time.
@@ -765,7 +766,7 @@ const Footer = () => {
             <div>
               <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground/60 mb-3">Company</p>
               <div className="space-y-2">
-                <a href="mailto:contact@nataltruth.com" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</a>
+                <a href="mailto:contact@gab44.com" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</a>
                 <a href="#" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">Privacy</a>
                 <a href="#" className="block text-sm text-muted-foreground hover:text-foreground transition-colors">Terms</a>
               </div>
@@ -774,7 +775,7 @@ const Footer = () => {
         </div>
 
         <div className="border-t border-border pt-8 flex flex-col md:flex-row items-center justify-between gap-4">
-          <p className="text-sm text-muted-foreground">© 2026 NatalTruth. Helping humanity align with truth.</p>
+          <p className="text-sm text-muted-foreground">© 2026 Gab44. Helping humanity align with truth.</p>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
             <Lock className="w-3.5 h-3.5" />
             <span>Your data is encrypted and never shared with third parties</span>

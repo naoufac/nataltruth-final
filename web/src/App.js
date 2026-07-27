@@ -1,16 +1,11 @@
 import { useState, useEffect, createContext, useContext, lazy, Suspense } from "react";
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import axios from "axios";
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ReadingModeProvider } from "@/context/ReadingModeContext";
 import { loadOneSignal } from "@/lib/onesignal";
-import { BACKEND_URL, API_BASE } from "@/lib/apiConfig";
-import {
-  loadLocalProfile,
-  saveLocalProfile,
-  clearLocalProfile,
-} from "@/lib/nataltruth";
 
 // Public pages — eager-loaded so the marketing surface and auth routes
 // have zero bundle-fetch latency on first paint.
@@ -44,14 +39,10 @@ const RouteFallback = () => (
   </div>
 );
 
-/** Calc API base: https://api.nataltruth.com (no /api prefix). */
-export const API = API_BASE;
-export { BACKEND_URL };
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+export const API = `${BACKEND_URL}/api`;
 
-const SESSION_KEY = "nataltruth_session";
-
-// Auth Context — session is local until an auth API exists.
-// Chart/name calculations hit api.nataltruth.com only.
+// Auth Context
 const AuthContext = createContext(null);
 
 export const useAuth = () => {
@@ -62,163 +53,94 @@ export const useAuth = () => {
   return context;
 };
 
-function profileToUser(profile) {
-  if (!profile) return null;
-  const email = (profile.email || "").toLowerCase();
-  const plan = profile.plan || profile.subscription_tier || "free";
-  const isFounder = email === "nchobah@gmail.com";
-  return {
-    id: profile.id || "local",
-    email: profile.email || "",
-    name: profile.name || profile.birth_name || "",
-    birth_name: profile.birth_name || profile.name || "",
-    birth_date: profile.birth_date || "",
-    birth_time: profile.birth_time || "",
-    birth_place: profile.birth_place || "",
-    latitude: profile.latitude,
-    longitude: profile.longitude,
-    utc_offset: profile.utc_offset || profile.utcOffset || null,
-    timezone: profile.timezone || profile.timeZoneId || null,
-    is_admin: !!(profile.is_admin || isFounder),
-    is_guest: false,
-    tier: plan,
-    plan,
-    subscription_tier: plan,
-    engineDefault: profile.engineDefault || (plan === "ultra" ? "swiss" : "moshier"),
-  };
-}
-
-async function hydrateEntitlement(profile) {
-  if (!profile?.email) return profile;
-  try {
-    const { fetchEntitlement } = await import("@/lib/nataltruth");
-    const ent = await fetchEntitlement(profile.email);
-    if (!ent) return profile;
-    const next = {
-      ...profile,
-      plan: ent.plan,
-      subscription_tier: ent.plan,
-      engineDefault: ent.engineDefault,
-    };
-    saveLocalProfile(next);
-    if (ent.engineDefault) {
-      localStorage.setItem("nataltruth_engine", ent.engineDefault);
-    }
-    return next;
-  } catch {
-    return profile;
-  }
-}
-
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
-  const [token, setToken] = useState(localStorage.getItem(SESSION_KEY));
+  const [token, setToken] = useState(localStorage.getItem("gab44_token"));
   const [loading, setLoading] = useState(true);
 
   const logout = () => {
-    localStorage.removeItem(SESSION_KEY);
-    clearLocalProfile();
+    localStorage.removeItem("gab44_token");
     setToken(null);
     setUser(null);
   };
 
+  // Global Axios interceptor: auto-logout when any API call returns 401
+  // (e.g. JWT expired mid-session). Runs once on mount.
   useEffect(() => {
-    // Restore local session + birth profile; hydrate plan from API entitlements
-    (async () => {
-      const session = localStorage.getItem(SESSION_KEY);
-      let profile = loadLocalProfile();
-      if (profile?.email) {
-        profile = await hydrateEntitlement(profile);
+    const interceptorId = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error.response?.status === 401) {
+          const currentToken = localStorage.getItem("gab44_token");
+          // Only trigger if the user was actually logged in (avoid loop on the
+          // /auth/login or /auth/me calls that fire before session is set)
+          if (currentToken) {
+            localStorage.removeItem("gab44_token");
+            setToken(null);
+            setUser(null);
+            import("sonner").then(({ toast }) => {
+              toast.error("Your session has expired. Please sign in again.");
+            });
+            // Redirect to auth after a brief delay so the toast is visible first
+            setTimeout(() => {
+              if (!window.location.pathname.startsWith("/auth")) {
+                window.location.href = "/auth";
+              }
+            }, 1500);
+          }
+        }
+        return Promise.reject(error);
       }
-      if (session && profile) {
-        setToken(session);
-        setUser(profileToUser(profile));
-      } else if (profile?.birth_date || profile?.email) {
-        const sid = "local-session";
-        localStorage.setItem(SESSION_KEY, sid);
-        setToken(sid);
-        setUser(profileToUser(profile));
-      }
-      setLoading(false);
-    })();
+    );
+    return () => axios.interceptors.response.eject(interceptorId);
   }, []);
 
+  useEffect(() => {
+    const verifyToken = async () => {
+      if (token) {
+        try {
+          const response = await axios.get(`${API}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setUser(response.data);
+        } catch (error) {
+          console.error("Token verification failed:", error);
+          localStorage.removeItem("gab44_token");
+          setToken(null);
+        }
+      }
+      setLoading(false);
+    };
+    verifyToken();
+  }, [token]);
+
+  // Lazy-load the OneSignal SDK only after the user is authed. Public
+  // marketing surfaces (LandingPage, /zodiac/*, /horoscope/today,
+  // /pricing) never pay the SDK download cost.
   useEffect(() => {
     if (user) loadOneSignal();
   }, [user]);
 
-  /**
-   * Local session only — api.nataltruth.com does not provide login.
-   * Accepts email/password fields for UI compatibility; stores profile locally.
-   */
   const login = async (email, password) => {
-    let profile = loadLocalProfile() || {
-      email,
-      name: email?.split("@")[0] || "User",
-      birth_name: "",
-      birth_date: "",
-      birth_time: "",
-      birth_place: "",
-    };
-    profile.email = email || profile.email;
-    profile = await hydrateEntitlement(profile);
-    saveLocalProfile(profile);
-    const sid = `local-${Date.now()}`;
-    localStorage.setItem(SESSION_KEY, sid);
-    setToken(sid);
-    const u = profileToUser(profile);
-    setUser(u);
-    return u;
+    const response = await axios.post(`${API}/auth/login`, { email, password });
+    const { access_token, user: userData } = response.data;
+    localStorage.setItem("gab44_token", access_token);
+    setToken(access_token);
+    setUser(userData);
+    return userData;
   };
 
-  /**
-   * Register = save birth profile locally and open session.
-   * Chart calc uses this profile against api.nataltruth.com.
-   */
   const register = async (userData) => {
-    let profile = {
-      id: `local-${Date.now()}`,
-      email: userData.email || "",
-      name: userData.name || "",
-      birth_name: userData.birth_name || userData.name || "",
-      birth_date: userData.birth_date || "",
-      birth_time: userData.birth_time || "",
-      birth_place: userData.birth_place || "",
-      latitude: userData.latitude != null ? Number(userData.latitude) : undefined,
-      longitude: userData.longitude != null ? Number(userData.longitude) : undefined,
-      utc_offset: userData.utc_offset || userData.utcOffset || null,
-      timezone: userData.timezone || userData.timeZoneId || null,
-    };
-    profile = await hydrateEntitlement(profile);
-    saveLocalProfile(profile);
-    const sid = `local-${Date.now()}`;
-    localStorage.setItem(SESSION_KEY, sid);
-    setToken(sid);
-    const u = profileToUser(profile);
-    setUser(u);
-    return u;
+    const response = await axios.post(`${API}/auth/register`, userData);
+    const { access_token, user: newUser } = response.data;
+    localStorage.setItem("gab44_token", access_token);
+    setToken(access_token);
+    setUser(newUser);
+    return newUser;
   };
 
   const updateUser = (updatedData) => {
-    setUser((prev) => {
-      const next = { ...prev, ...updatedData };
-      const profile = loadLocalProfile() || {};
-      saveLocalProfile({
-        ...profile,
-        ...updatedData,
-        name: next.name,
-        birth_name: next.birth_name,
-        birth_date: next.birth_date,
-        birth_time: next.birth_time,
-        birth_place: next.birth_place,
-        latitude: next.latitude,
-        longitude: next.longitude,
-        utc_offset: next.utc_offset,
-        timezone: next.timezone,
-        email: next.email,
-      });
-      return next;
-    });
+    setUser(prev => ({ ...prev, ...updatedData }));
   };
 
   return (
@@ -403,8 +325,8 @@ function App() {
                   </AdminRoute>
                 } 
               />
-              <Route path="*" element={<NotFoundPage />} />
             </Routes>
+            <Route path="*" element={<NotFoundPage />} />
             </Suspense>
           </BrowserRouter>
           <Toaster position="top-right" />

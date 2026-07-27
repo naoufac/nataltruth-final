@@ -1,8 +1,8 @@
 /**
  * NatalTruth Calculation + Product API.
  *
- * Calculation engine (13 endpoints): /v1/calculate, /v1/calculate/swiss,
- * /v1/calculate/moshier, /v1/name/*, /v1/gematria, /health.
+ * Calculation engine (13 endpoints): /calculate, /calculate/swiss,
+ * /calculate/moshier, /name/*, /gematria, /health.
  * Product: /api/auth/*, /api/charts, /api/posts, /api/admin/*.
  */
 import "dotenv/config";
@@ -158,21 +158,21 @@ app.get("/health", (_req, res) => {
         "grand_cross",
       ],
       routes: {
-        swiss: "POST /v1/calculate/swiss",
-        moshier: "POST /v1/calculate/moshier",
-        generic: "POST /v1/calculate",
+        swiss: "POST /calculate/swiss",
+        moshier: "POST /calculate/moshier",
+        generic: "POST /calculate",
       },
     },
     name: {
       systems: listLetterSystems(),
-      full: "POST /v1/name/full",
+      full: "POST /name/full",
     },
   });
 });
 
 // ── Chart ──────────────────────────────────────────────────────────
 
-app.post("/v1/calculate", async (req, res) => {
+app.post("/calculate", async (req, res) => {
   try {
     const body = BirthBody.parse(req.body);
     await runCalculate(body, res);
@@ -181,7 +181,7 @@ app.post("/v1/calculate", async (req, res) => {
   }
 });
 
-app.post("/v1/calculate/swiss", async (req, res) => {
+app.post("/calculate/swiss", async (req, res) => {
   try {
     const body = BirthBodyBase.parse(req.body);
     await runCalculate({ ...body, engineMode: "swiss" }, res);
@@ -190,7 +190,7 @@ app.post("/v1/calculate/swiss", async (req, res) => {
   }
 });
 
-app.post("/v1/calculate/moshier", async (req, res) => {
+app.post("/calculate/moshier", async (req, res) => {
   try {
     const body = BirthBodyBase.parse(req.body);
     await runCalculate({ ...body, engineMode: "moshier" }, res);
@@ -201,11 +201,11 @@ app.post("/v1/calculate/moshier", async (req, res) => {
 
 // ── Name systems ───────────────────────────────────────────────────
 
-app.get("/v1/name/systems", (_req, res) => {
+app.get("/name/systems", (_req, res) => {
   res.json({ ok: true, systems: listLetterSystems() });
 });
 
-app.post("/v1/name/full", async (req, res) => {
+app.post("/name/full", async (req, res) => {
   try {
     const body = NameBody.parse(req.body);
     const profile = calculateFullNameProfile(body.fullName, body.birthDate);
@@ -227,7 +227,7 @@ const systemHandlers: Record<
 };
 
 for (const id of Object.keys(systemHandlers) as LetterSystemId[]) {
-  app.post(`/v1/name/${id}`, async (req, res) => {
+  app.post(`/name/${id}`, async (req, res) => {
     try {
       const body = NameBody.parse(req.body);
       const result = systemHandlers[id](body.fullName);
@@ -239,13 +239,13 @@ for (const id of Object.keys(systemHandlers) as LetterSystemId[]) {
 }
 
 /** Legacy alias */
-app.post("/v1/gematria", async (req, res) => {
+app.post("/gematria", async (req, res) => {
   try {
     const body = NameBody.parse(req.body);
     if (!body.birthDate) {
       res.status(400).json({
         ok: false,
-        error: "birthDate required for /v1/gematria — or use /v1/name/full",
+        error: "birthDate required for /gematria — or use /name/full",
       });
       return;
     }
@@ -322,7 +322,7 @@ function buildChartContext(userId: string): string | null {
   return lines.length > 1 ? lines.join("\n") : null;
 }
 
-app.post("/v1/chat", async (req, res) => {
+app.post("/chat", async (req, res) => {
   try {
     const body = ChatBody.parse(req.body);
     const user = (req as ExpressRequest & { user?: AuthUser }).user;
@@ -369,23 +369,8 @@ app.post("/v1/chat", async (req, res) => {
   }
 });
 
-// Legacy alias
-app.post("/chat", async (req, res) => {
-  try {
-    const body = ChatBody.parse(req.body);
-    const { response, model } = await chatCompletion({
-      message: body.message,
-      context: body.context,
-    });
-    res.json({ ok: true, response, model, session_id: body.session_id || null });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : "Chat failed";
-    res.status(msg.includes("not configured") ? 503 : 500).json({ ok: false, error: msg });
-  }
-});
-
 // ── Deep reading generation ─────────────────────────────────────────
-app.post("/v1/reading/deep", async (req, res) => {
+app.post("/reading/deep", async (req, res) => {
   try {
     const snapshot = req.body?.snapshot;
     if (!snapshot) {
@@ -401,7 +386,7 @@ app.post("/v1/reading/deep", async (req, res) => {
 });
 
 // ── Chat session management (SQLite-backed) ─────────────────────────
-app.get("/v1/chat/sessions", (req, res) => {
+app.get("/chat/sessions", (req, res) => {
   const user = (req as ExpressRequest & { user?: AuthUser }).user;
   const userId = user?.id;
   if (!userId) {
@@ -427,7 +412,7 @@ app.get("/v1/chat/sessions", (req, res) => {
   });
 });
 
-app.get("/v1/chat/history/:id", (req, res) => {
+app.get("/chat/history/:id", (req, res) => {
   const user = (req as ExpressRequest & { user?: AuthUser }).user;
   const userId = user?.id;
   if (!userId) {
@@ -445,7 +430,7 @@ app.get("/v1/chat/history/:id", (req, res) => {
   });
 });
 
-app.delete("/v1/chat/session/:id", (req, res) => {
+app.delete("/chat/session/:id", (req, res) => {
   const user = (req as ExpressRequest & { user?: AuthUser }).user;
   const userId = user?.id;
   if (!userId) {
@@ -463,7 +448,7 @@ app.delete("/v1/chat/session/:id", (req, res) => {
 });
 
 // ── Entitlements (plan lookup for frontend feature gating) ──────────
-app.get("/v1/entitlements", (req, res) => {
+app.get("/entitlements", (req, res) => {
   const email = (req.query.email as string || "").trim().toLowerCase();
   const founderEmails = (process.env.FOUNDER_EMAILS || process.env.ADMIN_EMAIL || "")
     .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
@@ -491,7 +476,7 @@ const ASPECT_ANGLES: Record<string, number> = {
 };
 const TRANSIT_ORB = 3;
 
-app.get("/v1/transits", async (req, res) => {
+app.get("/transits", async (req, res) => {
   try {
     const user = (req as ExpressRequest & { user?: AuthUser }).user;
     const userId = user?.id;
@@ -544,7 +529,7 @@ app.get("/v1/transits", async (req, res) => {
 });
 
 // ── Daily guidance: GLM-5.2 reading from chart + transits ──────────
-app.get("/v1/guidance/daily", async (req, res) => {
+app.get("/guidance/daily", async (req, res) => {
   try {
     const user = (req as ExpressRequest & { user?: AuthUser }).user;
     const userId = user?.id;
@@ -596,7 +581,7 @@ app.get("/v1/guidance/daily", async (req, res) => {
 // ── Daily horoscope: per-sign GLM-5.2 content ──────────────────────
 const ZODIAC_SIGNS_LIST = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
 
-app.get("/v1/horoscope/:sign", async (req, res) => {
+app.get("/horoscope/:sign", async (req, res) => {
   try {
     const sign = ZODIAC_SIGNS_LIST.find(s => s.toLowerCase() === req.params.sign.toLowerCase());
     if (!sign) { res.status(400).json({ ok: false, error: "Invalid zodiac sign." }); return; }
@@ -631,7 +616,7 @@ app.get("/v1/horoscope/:sign", async (req, res) => {
   }
 });
 
-app.get("/v1/horoscope", async (_req, res) => {
+app.get("/horoscope", async (_req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const signs = ZODIAC_SIGNS_LIST;
   const results: any[] = [];
@@ -644,6 +629,90 @@ app.get("/v1/horoscope", async (_req, res) => {
   res.json({ ok: true, date: today, signs: results });
 });
 
+
+// ── Route aliases for Gab44-V2 frontend compatibility ──────────────
+app.get("/transits/upcoming", async (req, res) => {
+  try {
+    const user = (req as ExpressRequest & { user?: AuthUser }).user;
+    if (!user?.id) { res.status(401).json({ detail: "Authentication required" }); return; }
+    const chartRow = db.prepare("SELECT snapshot_json FROM charts WHERE user_id = ? ORDER BY created_at DESC LIMIT 1").get(user.id) as { snapshot_json: string } | undefined;
+    if (!chartRow) { res.json([]); return; }
+    const natal = JSON.parse(chartRow.snapshot_json);
+    const natalPlanets: any[] = natal.planets || [];
+    const now = new Date();
+    const currentChart = await calculateBirthChart(now, 0, 0, "E", "swiss");
+    const transits: any[] = [];
+    for (const tp of currentChart.planets) {
+      if (!["Jupiter","Saturn","Uranus","Neptune","Pluto"].includes(tp.planet)) continue;
+      for (const np of natalPlanets) {
+        let diff = Math.abs(tp.longitude - np.longitude);
+        if (diff > 180) diff = 360 - diff;
+        for (const [aspectName, angle] of Object.entries({ conjunction: 0, sextile: 60, square: 90, trine: 120, opposition: 180 })) {
+          const orb = Math.abs(diff - angle);
+          if (orb <= 5) {
+            transits.push({
+              id: `${tp.planet}-${np.planet}-${aspectName}`, transit_type: `${tp.planet} ${aspectName} ${np.planet}`,
+              planet: tp.planet, aspect: aspectName, natal_planet: np.planet, transit_sign: tp.sign,
+              orb: Math.round(orb * 100) / 100, strength: Math.round((1 - orb / 5) * 100) / 100,
+              start_date: now.toISOString(), peak_date: now.toISOString(),
+              end_date: new Date(now.getTime() + 7 * 86400000).toISOString(),
+              interpretation: `${tp.planet} ${aspectName} ${np.planet} transit.`,
+              action_items: ["Pay attention", "Journal"],
+            });
+          }
+        }
+      }
+    }
+    transits.sort((a, b) => b.strength - a.strength);
+    res.json(transits.slice(0, 6));
+  } catch { res.json([]); }
+});
+
+app.get("/numerology/me", (req, res) => {
+  const user = (req as ExpressRequest & { user?: AuthUser }).user;
+  if (!user?.id) { res.status(401).json({ detail: "Authentication required" }); return; }
+  const chartRow = db.prepare("SELECT snapshot_json FROM charts WHERE user_id = ? ORDER BY created_at DESC LIMIT 1").get(user.id) as { snapshot_json: string } | undefined;
+  if (!chartRow) { res.json({}); return; }
+  try {
+    const snap = JSON.parse(chartRow.snapshot_json);
+    const num = snap.numerology?.coreNumbers || {};
+    const result: any = {};
+    for (const [key, val] of Object.entries(num)) {
+      const shortKey = key.replace("Number", "").toLowerCase();
+      result[shortKey] = { number: val, keyword: "", theme: "" };
+    }
+    res.json(result);
+  } catch { res.json({}); }
+});
+
+app.get("/chart/me", (req, res) => {
+  const user = (req as ExpressRequest & { user?: AuthUser }).user;
+  if (!user?.id) { res.status(401).json({ detail: "Authentication required" }); return; }
+  const chartRow = db.prepare("SELECT snapshot_json, input_json FROM charts WHERE user_id = ? ORDER BY created_at DESC LIMIT 1").get(user.id) as { snapshot_json: string; input_json: string } | undefined;
+  if (!chartRow) { res.status(404).json({ detail: "No chart found" }); return; }
+  try {
+    const snap = JSON.parse(chartRow.snapshot_json);
+    const input = JSON.parse(chartRow.input_json);
+    const planets: any = {};
+    for (const p of snap.planets || []) {
+      const key = p.planet.toLowerCase().replace(/\s+/g, "_");
+      planets[key] = { sign: p.sign, degree: p.longitude, sign_degree: p.signDegree, house: p.house, retrograde: p.isRetrograde };
+    }
+    const houses: any = {};
+    for (const h of snap.houses || []) { houses[h.house] = { sign: h.sign, sign_degree: h.signDegree }; }
+    res.json({
+      sun_sign: snap.planets?.find((p: any) => p.planet === "Sun")?.sign,
+      moon_sign: snap.planets?.find((p: any) => p.planet === "Moon")?.sign,
+      rising_sign: snap.houses?.find((h: any) => h.house === 1)?.sign,
+      planets, houses, aspects: snap.aspects || [],
+      patterns: (snap.patterns || []).map((p: any) => p.type),
+      numerology: snap.numerology?.coreNumbers || {},
+      birth_date: input?.birthDate, birth_place: input?.birthPlaceLabel,
+    });
+  } catch { res.status(500).json({ detail: "Chart parse error" }); }
+});
+
+app.get("/guidance/voice/:id", (_req, res) => { res.status(503).json({ detail: "Voice guidance not configured" }); });
 
 // The frontend calls /admin/* with Authorization: Bearer <token>.
 // Auth is via our JWT cookie OR the bearer token.

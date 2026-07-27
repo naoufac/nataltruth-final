@@ -3,15 +3,15 @@
  * Anything not listed here must not be called from the SPA.
  */
 export const LIVE_API = {
-  calculate: "/v1/calculate",
-  calculateSwiss: "/v1/calculate/swiss",
-  calculateMoshier: "/v1/calculate/moshier",
-  nameSystems: "/v1/name/systems",
-  nameFull: "/v1/name/full",
-  nameSystem: (id) => `/v1/name/${id}`,
-  gematria: "/v1/gematria",
+  calculate: "/calculate",
+  calculateSwiss: "/calculate/swiss",
+  calculateMoshier: "/calculate/moshier",
+  nameSystems: "/name/systems",
+  nameFull: "/name/full",
+  nameSystem: (id) => `/name/${id}`,
+  gematria: "/gematria",
   chat: "/chat",
-  chatV1: "/v1/chat",
+  chatV1: "/chat",
   chatSessions: "/chat/sessions",
   chatHistory: (id) => `/chat/history/${id}`,
   chatDelete: (id) => `/chat/session/${id}`,

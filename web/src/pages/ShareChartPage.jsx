@@ -66,7 +66,7 @@ const ChartShareCard = ({ chart, user, forExport = false }) => {
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
             <Sparkles className="w-6 h-6 text-amber-400" />
-            <span className="font-serif text-xl text-white">NatalTruth</span>
+            <span className="font-serif text-xl text-white">Gab44</span>
           </div>
           <h2 className="font-serif text-2xl text-white mb-1">{user?.name}'s</h2>
           <p className="text-amber-400/80 text-sm uppercase tracking-widest">Cosmic Blueprint</p>
@@ -140,7 +140,7 @@ const ChartShareCard = ({ chart, user, forExport = false }) => {
         {/* Footer */}
         <div className="text-center pt-4 border-t border-white/10">
           <p className="text-white/40 text-xs">Discover your cosmic blueprint at</p>
-          <p className="text-amber-400 font-medium">nataltruth.com</p>
+          <p className="text-amber-400 font-medium">gab44.com</p>
         </div>
       </div>
     </div>
@@ -168,86 +168,163 @@ export default function ShareChartPage() {
     const fetchChart = async () => {
       setChartError(null);
       try {
-        const { calculateChart, adaptChartForUi, loadLocalProfile } = await import("@/lib/nataltruth");
-        const profile = loadLocalProfile() || user || {};
-        if (!profile.birth_date || profile.latitude == null || profile.longitude == null) {
-          setChartError("Add birth date + lat/lon in Settings, then open Chart.");
-          return;
+        const response = await axios.get(`${API}/chart/me`, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        setChart(response.data);
+        // If chart already has a share token stored, use it
+        if (response.data.share_token) {
+          setShareToken(response.data.share_token);
         }
-        const engine = localStorage.getItem("nataltruth_engine") || "swiss";
-        const api = await calculateChart(profile, engine);
-        setChart(adaptChartForUi(api, profile));
       } catch (error) {
         console.error("Error fetching chart:", error);
-        setChartError(error?.message || "Could not load your chart via api.nataltruth.com.");
+        setChartError("Could not load your chart. Please try again.");
       } finally {
         setLoading(false);
       }
     };
     if (token) fetchChart();
-  }, [token, retryCount, user]);
+  }, [token, retryCount]);
 
-  // No /chart/image.png or /chart/share on api.nataltruth.com — zero 404.
-  // Chart data itself is loaded via calculate (live). Preview image APIs disabled.
+  // Fetch the rendered chart image as a Blob URL whenever the user toggles
+  // between card / wheel preview. Object URL is revoked on cleanup so we
+  // don't leak — Blob URLs persist for the document lifetime otherwise.
   useEffect(() => {
-    setPreviewLoading(false);
-    setPreviewError(true);
-    setPreviewUrl(null);
+    if (!token || !chart) return;
+    let active = true;
+    let createdUrl = null;
+    setPreviewLoading(true);
+    setPreviewError(false);
+    axios.get(`${API}/chart/image.png`, {
+      headers: { Authorization: `Bearer ${token}` },
+      params: { style: previewMode, size: previewMode === "wheel" ? 1200 : 1080 },
+      responseType: "blob",
+    })
+      .then(res => {
+        if (!active) return;
+        createdUrl = URL.createObjectURL(res.data);
+        setPreviewUrl(createdUrl);
+      })
+      .catch(err => {
+        if (!active) return;
+        console.error("Chart image preview failed:", err);
+        setPreviewError(true);
+      })
+      .finally(() => {
+        if (active) setPreviewLoading(false);
+      });
+    return () => {
+      active = false;
+      if (createdUrl) URL.revokeObjectURL(createdUrl);
+    };
   }, [token, chart, previewMode]);
 
-  const downloadImage = async () => {
-    toast.message("Chart image export is not available yet", {
-      description: "Your chart data is live from calculate — PNG render API is not built.",
-    });
-    setDownloadingStyle(null);
+  const downloadImage = async (style) => {
+    setDownloadingStyle(style);
+    try {
+      const res = await axios.get(`${API}/chart/image.png`, {
+        headers: { Authorization: `Bearer ${token}` },
+        params: { style, size: style === "wheel" ? 1600 : 1080 },
+        responseType: "blob",
+      });
+      const blobUrl = URL.createObjectURL(res.data);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      const safeName = (user?.name || "chart").replace(/[^A-Za-z0-9]+/g, "-").toLowerCase() || "chart";
+      a.download = `gab44-${safeName}-${style}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Defer revoke until the browser has had a tick to start the download
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 1000);
+      toast.success("Chart image downloaded.");
+    } catch (err) {
+      console.error("Chart image download failed:", err);
+      toast.error("Couldn't download your chart image. Please try again.");
+    } finally {
+      setDownloadingStyle(null);
+    }
   };
 
   const generateShareLink = async () => {
-    setGeneratingLink(false);
-    toast.message("Public share links are not available yet", {
-      description: "Use Share text below or open /chart for full data.",
-    });
+    if (shareToken) return; // already generated
+    setGeneratingLink(true);
+    try {
+      const res = await axios.post(`${API}/chart/share`, {}, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      setShareToken(res.data.share_token);
+    } catch {
+      toast.error("Couldn't create your share link. Your chart is safe — try again in a moment.");
+    } finally {
+      setGeneratingLink(false);
+    }
   };
 
-  const shareUrl = () => `${window.location.origin}/chart`;
+  const shareUrl = (token) =>
+    token
+      ? `${window.location.origin}/chart/public/${token}`
+      : `${window.location.origin}/auth?mode=register`;
 
   const copyLink = async () => {
+    let tok = shareToken;
+    if (!tok) {
+      // Generate first, then copy using the freshly returned token
+      setGeneratingLink(true);
+      try {
+        const res = await axios.post(`${API}/chart/share`, {}, {
+          headers: { Authorization: `Bearer ${token}` }
+        });
+        tok = res.data.share_token;
+        setShareToken(tok);
+      } catch {
+        toast.error("Couldn't create your share link. Your chart is safe — try again in a moment.");
+        setGeneratingLink(false);
+        return;
+      }
+      setGeneratingLink(false);
+    }
     try {
-      const text = `NatalTruth chart: ${chart?.sun_sign || "?"} Sun, ${chart?.moon_sign || "?"} Moon, ${chart?.rising_sign || "?"} Rising — ${shareUrl()}`;
-      await navigator.clipboard.writeText(text);
+      await navigator.clipboard.writeText(shareUrl(tok));
       setCopied(true);
-      toast.success("Chart summary copied (no public token API).");
+      toast.success("Link copied to clipboard!");
       setTimeout(() => setCopied(false), 2000);
     } catch {
-      toast.error("Failed to copy");
+      toast.error("Failed to copy link");
     }
   };
 
   const shareToTwitter = async () => {
-    const text = `✨ I'm a ${chart?.sun_sign} Sun, ${chart?.moon_sign} Moon, ${chart?.rising_sign} Rising! Discover your chart at NatalTruth`;
-    window.open(
-      `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl())}`,
-      "_blank"
-    );
+    if (!shareToken) {
+      await generateShareLink();
+      return; // shareToken state not yet updated; user can click again
+    }
+    const text = `✨ I'm a ${chart?.sun_sign} Sun, ${chart?.moon_sign} Moon, ${chart?.rising_sign} Rising! Discover your cosmic blueprint at Gab44`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(shareUrl(shareToken))}`, '_blank');
   };
 
   const shareToFacebook = async () => {
-    window.open(
-      `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl())}`,
-      "_blank"
-    );
+    if (!shareToken) {
+      await generateShareLink();
+      return;
+    }
+    window.open(`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(shareUrl(shareToken))}`, '_blank');
   };
 
   const shareNative = async () => {
+    if (!shareToken) {
+      await generateShareLink();
+      return;
+    }
     if (navigator.share) {
       try {
         await navigator.share({
-          title: `${user?.name}'s Cosmic Blueprint - NatalTruth`,
+          title: `${user?.name}'s Cosmic Blueprint - Gab44`,
           text: `I'm a ${chart?.sun_sign} Sun, ${chart?.moon_sign} Moon, ${chart?.rising_sign} Rising!`,
-          url: shareUrl(),
+          url: shareUrl(shareToken)
         });
       } catch (err) {
-        if (err.name !== "AbortError") {
+        if (err.name !== 'AbortError') {
           toast.error("Failed to share");
         }
       }

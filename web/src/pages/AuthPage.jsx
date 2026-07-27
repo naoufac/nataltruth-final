@@ -33,10 +33,6 @@ export default function AuthPage() {
     birth_date: "",
     birth_time: "",
     birth_place: "",
-    // Required by api.nataltruth.com calculate
-    latitude: "",
-    longitude: "",
-    utc_offset: "",
   });
 
   useEffect(() => {
@@ -50,13 +46,15 @@ export default function AuthPage() {
   const handleForgotSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
-    // No server auth — profile is local only (zero 404).
-    await new Promise((r) => setTimeout(r, 200));
-    toast.message("Password reset is not available", {
-      description: "NatalTruth uses a local profile on this device. Re-register or update Settings — no email reset API.",
-    });
-    setIsForgot(false);
-    setLoading(false);
+    try {
+      await axios.post(`${API}/auth/forgot-password`, { email: forgotEmail });
+      toast.success("If that email is registered, a reset link has been sent.");
+      setIsForgot(false);
+    } catch {
+      toast.error("Something went wrong on our end. Your data is safe — please try again.");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Step 1 submit: validate and advance to step 2
@@ -78,13 +76,8 @@ export default function AuthPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await register({
-        ...formData,
-        birth_name: formData.birth_name || formData.name,
-        latitude: formData.latitude === "" ? undefined : Number(formData.latitude),
-        longitude: formData.longitude === "" ? undefined : Number(formData.longitude),
-      });
-      toast.success("Profile saved. Charts use api.nataltruth.com.");
+      await register(formData);
+      toast.success("Welcome to Gab44! Check your inbox to verify your email.");
       navigate("/dashboard");
     } catch (error) {
       toast.error(parseApiError(error));
@@ -106,7 +99,7 @@ export default function AuthPage() {
         birth_time: "",
         birth_place: "",
       });
-      toast.success("Welcome to NatalTruth! Check your inbox to verify your email.");
+      toast.success("Welcome to Gab44! Check your inbox to verify your email.");
       navigate("/dashboard");
     } catch (error) {
       toast.error(parseApiError(error));
@@ -158,7 +151,7 @@ export default function AuthPage() {
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
-          <span className="font-serif text-xl text-foreground">NatalTruth</span>
+          <span className="font-serif text-xl text-foreground">Gab44</span>
         </div>
 
         {/* ── Forgot Password Panel ── */}
@@ -418,54 +411,6 @@ export default function AuthPage() {
                   className="bg-muted/30 border-border h-12 rounded-xl focus-glow"
                   data-testid="birth-place-input"
                   required
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-2">
-                  <Label htmlFor="latitude" className="text-foreground">Latitude *</Label>
-                  <Input
-                    id="latitude"
-                    name="latitude"
-                    type="number"
-                    step="any"
-                    placeholder="33.5731"
-                    value={formData.latitude}
-                    onChange={handleChange}
-                    className="bg-muted/30 border-border h-12 rounded-xl focus-glow"
-                    data-testid="latitude-input"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="longitude" className="text-foreground">Longitude *</Label>
-                  <Input
-                    id="longitude"
-                    name="longitude"
-                    type="number"
-                    step="any"
-                    placeholder="-7.5898"
-                    value={formData.longitude}
-                    onChange={handleChange}
-                    className="bg-muted/30 border-border h-12 rounded-xl focus-glow"
-                    data-testid="longitude-input"
-                    required
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="utc_offset" className="text-foreground">
-                  UTC offset at birth
-                  <span className="text-xs text-muted-foreground font-normal"> (e.g. +01:00)</span>
-                </Label>
-                <Input
-                  id="utc_offset"
-                  name="utc_offset"
-                  type="text"
-                  placeholder="+00:00"
-                  value={formData.utc_offset}
-                  onChange={handleChange}
-                  className="bg-muted/30 border-border h-12 rounded-xl focus-glow"
-                  data-testid="utc-offset-input"
                 />
               </div>
               <div className="space-y-2">

@@ -62,11 +62,29 @@ const VoiceHoroscopePlayer = ({ token, tier }) => {
       }
       return;
     }
-    // No /guidance/voice on api.nataltruth.com — zero 404.
-    setLoading(false);
-    toast.message("Voice guidance is not available yet", {
-      description: "Use Chart, Numerology, or Chat — those call live NatalTruth APIs.",
-    });
+    setLoading(true);
+    try {
+      const res = await axios.get(`${API}/guidance/voice`, {
+        headers: { Authorization: `Bearer ${token}` },
+        responseType: "blob",
+      });
+      const url = URL.createObjectURL(res.data);
+      setAudioUrl(url);
+      // Wait for next tick so the <audio> element binds the src
+      setTimeout(() => {
+        if (audioRef.current) audioRef.current.play();
+      }, 50);
+    } catch (err) {
+      const status = err?.response?.status;
+      if (status === 403) {
+        toast.error("Voice horoscope is a premium feature. Upgrade to unlock daily audio readings.");
+        navigate("/pricing");
+      } else {
+        toast.error("Couldn't generate your voice horoscope. Please try again.");
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -179,7 +197,7 @@ const Sidebar = ({ activeTab, setActiveTab, mobileOpen, setMobileOpen }) => {
           <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center border border-primary/20">
             <Sparkles className="w-5 h-5 text-primary" />
           </div>
-          <span className="font-serif text-xl text-foreground">NatalTruth</span>
+          <span className="font-serif text-xl text-foreground">Gab44</span>
         </Link>
       </div>
 
@@ -292,7 +310,7 @@ const MobileHeader = ({ setMobileOpen }) => {
         </button>
         <Link to="/" className="flex items-center gap-2">
           <Sparkles className="w-5 h-5 text-primary" />
-          <span className="font-serif text-lg text-foreground">NatalTruth</span>
+          <span className="font-serif text-lg text-foreground">Gab44</span>
         </Link>
         <button
           onClick={toggleTheme}
@@ -314,32 +332,41 @@ const DashboardOverview = () => {
   const [numerology, setNumerology] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showFullDashboard, setShowFullDashboard] = useState(
-    () => localStorage.getItem("nataltruth_onboarding_skipped") === "true"
+    () => localStorage.getItem("gab44_onboarding_skipped") === "true"
   );
 
   useEffect(() => {
-    // Live API surface: name/full only. Guidance + transits not built yet.
     const fetchData = async () => {
-      setDailyGuidance(null);
-      setTransits([]);
-      try {
-        const fullName = user?.birth_name || user?.name;
-        const birthDate = user?.birth_date;
-        if (fullName) {
-          const { nameFull, adaptNumerologyForUi } = await import("@/lib/nataltruth");
-          const profile = await nameFull(fullName, birthDate);
-          setNumerology(adaptNumerologyForUi(profile));
-        } else {
-          setNumerology(null);
-        }
-      } catch (err) {
-        console.warn("Numerology via api.nataltruth.com failed:", err);
-        setNumerology(null);
+      const [guidanceSettled, transitsSettled, numerologySettled] = await Promise.allSettled([
+        axios.get(`${API}/guidance/daily`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/transits/upcoming`, { headers: { Authorization: `Bearer ${token}` } }),
+        axios.get(`${API}/numerology/me`, { headers: { Authorization: `Bearer ${token}` } }),
+      ]);
+
+      if (guidanceSettled.status === "fulfilled") {
+        setDailyGuidance(guidanceSettled.value.data);
+      } else {
+        console.warn("Daily guidance fetch failed:", guidanceSettled.reason);
+        toast.error("Failed to load daily guidance. Please try again.");
       }
+
+      if (transitsSettled.status === "fulfilled") {
+        setTransits(Array.isArray(transitsSettled.value.data) ? transitsSettled.value.data.slice(0, 3) : []);
+      } else {
+        console.warn("Transits fetch failed:", transitsSettled.reason);
+      }
+
+      if (numerologySettled.status === "fulfilled") {
+        setNumerology(numerologySettled.value.data);
+      } else {
+        console.warn("Numerology fetch failed:", numerologySettled.reason);
+        toast.error("Failed to load numerology. Please try again.");
+      }
+
       setLoading(false);
     };
     fetchData();
-  }, [token, user?.birth_name, user?.name, user?.birth_date]);
+  }, [token]);
 
   if (loading) {
     return (
@@ -355,7 +382,7 @@ const DashboardOverview = () => {
   const isNewUser = !numerology && !showFullDashboard;
 
   const handleSkipOnboarding = () => {
-    localStorage.setItem("nataltruth_onboarding_skipped", "true");
+    localStorage.setItem("gab44_onboarding_skipped", "true");
     setShowFullDashboard(true);
   };
 
@@ -571,13 +598,31 @@ export default function Dashboard() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { token, updateUser } = useAuth();
 
-  // Payment redirects: no /auth/me on calc API — local toast only (zero 404).
+  // Handle Stripe Checkout success redirect
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
-    if (params.get("subscription") === "success" || params.get("reading") === "success") {
+    if (params.get("subscription") === "success") {
+      window.history.replaceState({}, "", window.location.pathname);
+      axios
+        .get(`${API}/auth/me`, { headers: { Authorization: `Bearer ${token}` } })
+        .then((res) => {
+          updateUser(res.data);
+          import("sonner").then(({ toast }) => {
+            toast.success("Subscription activated! Welcome to your new plan.");
+          });
+        })
+        .catch(() => {
+          import("sonner").then(({ toast }) => {
+            toast.success("Subscription activated! Welcome to your new plan.");
+          });
+        });
+    }
+    if (params.get("reading") === "success") {
       window.history.replaceState({}, "", window.location.pathname);
       import("sonner").then(({ toast }) => {
-        toast.message("Payments are not connected to NatalTruth API yet.");
+        toast.success(
+          "Payment received — your personal reading is on its way. We'll email it within 48 hours."
+        );
       });
     }
   }, [token, updateUser]);

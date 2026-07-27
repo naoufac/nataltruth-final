@@ -1,12 +1,8 @@
 import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
-import { useAuth } from "@/App";
+import { useAuth, API } from "@/App";
 import { useTheme } from "@/context/ThemeContext";
-import {
-  nameFull,
-  adaptNumerologyForUi,
-  loadLocalProfile,
-} from "@/lib/nataltruth";
+import axios from "axios";
 import { Button } from "@/components/ui/button";
 import { 
   ArrowLeft,
@@ -108,35 +104,19 @@ export default function NumerologyPage() {
     const fetchProfile = async () => {
       setProfileError(null);
       try {
-        const local = loadLocalProfile() || {};
-        const fullName =
-          local.birth_name ||
-          local.name ||
-          user?.birth_name ||
-          user?.name ||
-          "";
-        const birthDate =
-          local.birth_date || user?.birth_date || null;
-        if (!fullName) {
-          setProfileError(
-            "Add your full name in registration/settings to calculate numerology via api.nataltruth.com."
-          );
-          return;
-        }
-        const apiProfile = await nameFull(fullName, birthDate);
-        setProfile(adaptNumerologyForUi(apiProfile));
+        const response = await axios.get(`${API}/numerology/profile`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setProfile(response.data);
       } catch (error) {
         console.error("Error fetching numerology profile:", error);
-        setProfileError(
-          error?.message ||
-            "Could not load numerology via api.nataltruth.com."
-        );
+        setProfileError("Could not load your numerology profile. Please try again.");
       } finally {
         setLoading(false);
       }
     };
-    fetchProfile();
-  }, [token, retryCount, user]);
+    if (token) fetchProfile();
+  }, [token, retryCount]);
 
   if (loading) {
     return (
