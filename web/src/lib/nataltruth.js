@@ -45,7 +45,7 @@ export async function nameSystem(system, fullName) {
  * Matches ChatPage contract: { message, session_id } → { response, session_id }.
  */
 export async function chatMessage(message, sessionId = null, context = null) {
-  const { data } = await http.post("/chat", {
+  const { data } = await http.post("/v1/chat", {
     message,
     session_id: sessionId || null,
     context: context || null,
@@ -57,17 +57,17 @@ export async function chatMessage(message, sessionId = null, context = null) {
 }
 
 export async function chatSessions() {
-  const { data } = await http.get("/chat/sessions");
+  const { data } = await http.get("/v1/chat/sessions");
   return Array.isArray(data) ? data : data?.sessions || [];
 }
 
 export async function chatHistory(sessionId) {
-  const { data } = await http.get(`/chat/history/${sessionId}`);
+  const { data } = await http.get(`/v1/chat/history/${sessionId}`);
   return Array.isArray(data) ? data : data?.messages || [];
 }
 
 export async function chatDeleteSession(sessionId) {
-  await http.delete(`/chat/session/${sessionId}`);
+  await http.delete(`/v1/chat/session/${sessionId}`);
 }
 
 // ─── Request mapping ─────────────────────────────────────────────────

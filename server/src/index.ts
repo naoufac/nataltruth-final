@@ -270,7 +270,17 @@ app.post("/v1/chat", async (req, res) => {
       message: body.message,
       context: body.context,
     });
-    res.json({ ok: true, response, model, session_id: body.session_id || null });
+
+    // Store in session if session_id provided
+    const sid = body.session_id || `s_${Date.now()}`;
+    if (!chatSessions.has(sid)) {
+      chatSessions.set(sid, { id: sid, messages: [], createdAt: new Date().toISOString() });
+    }
+    const session = chatSessions.get(sid)!;
+    session.messages.push({ role: "user", content: body.message, ts: new Date().toISOString() });
+    session.messages.push({ role: "assistant", content: response, ts: new Date().toISOString() });
+
+    res.json({ ok: true, response, model, session_id: sid });
   } catch (err) {
     const msg = err instanceof Error ? err.message : "Chat failed";
     res.status(msg.includes("not configured") ? 503 : 500).json({ ok: false, error: msg });
@@ -306,6 +316,56 @@ app.post("/v1/reading/deep", async (req, res) => {
     const msg = err instanceof Error ? err.message : "Deep reading failed";
     res.status(msg.includes("not configured") ? 503 : 500).json({ ok: false, error: msg });
   }
+});
+
+// ── Chat session management (in-memory; no persistence needed for v1) ──
+const chatSessions = new Map<string, { id: string; messages: { role: string; content: string; ts: string }[]; createdAt: string }>();
+
+app.get("/v1/chat/sessions", (_req, res) => {
+  const sessions = Array.from(chatSessions.values()).map(s => ({
+    id: s.id,
+    messageCount: s.messages.length,
+    createdAt: s.createdAt,
+  }));
+  res.json({ ok: true, sessions });
+});
+
+app.get("/v1/chat/history/:id", (req, res) => {
+  const session = chatSessions.get(req.params.id);
+  if (!session) {
+    res.status(404).json({ ok: false, error: "Session not found." });
+    return;
+  }
+  res.json({ ok: true, messages: session.messages });
+});
+
+app.delete("/v1/chat/session/:id", (req, res) => {
+  if (!chatSessions.has(req.params.id)) {
+    res.status(404).json({ ok: false, error: "Session not found." });
+    return;
+  }
+  chatSessions.delete(req.params.id);
+  res.json({ ok: true });
+});
+
+// ── Entitlements (plan lookup for frontend feature gating) ──────────
+app.get("/v1/entitlements", (req, res) => {
+  const email = (req.query.email as string || "").trim().toLowerCase();
+  const isAdmin = email && process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL.trim().toLowerCase();
+  res.json({
+    ok: true,
+    entitlement: {
+      email: email || "anonymous",
+      plan: isAdmin ? "ultra" : "free",
+      engineDefault: "swiss",
+      features: {
+        chat: true,
+        deepReading: isAdmin,
+        moshierEngine: true,
+        swissEngine: true,
+      },
+    },
+  });
 });
 
 // ── Product (auth, saved charts, blog, admin CMS) ──────────────────

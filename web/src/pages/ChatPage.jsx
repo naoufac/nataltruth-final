@@ -49,7 +49,7 @@ export default function ChatPage() {
 
   const fetchSessions = async () => {
     try {
-      const response = await axios.get(`${API}/chat/sessions`, {
+      const response = await axios.get(`${API}/v1/chat/sessions`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSessions(Array.isArray(response.data) ? response.data : []);
@@ -61,7 +61,7 @@ export default function ChatPage() {
 
   const loadSession = async (sid) => {
     try {
-      const response = await axios.get(`${API}/chat/history/${sid}`, {
+      const response = await axios.get(`${API}/v1/chat/history/${sid}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setMessages(response.data);
@@ -79,7 +79,7 @@ export default function ChatPage() {
   const deleteSession = async (e, sid) => {
     e.stopPropagation(); // don't trigger loadSession
     try {
-      await axios.delete(`${API}/chat/session/${sid}`, {
+      await axios.delete(`${API}/v1/chat/session/${sid}`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       setSessions(prev => prev.filter(s => s.session_id !== sid));
@@ -101,7 +101,7 @@ export default function ChatPage() {
 
     try {
       const response = await axios.post(
-        `${API}/chat`,
+        `${API}/v1/chat`,
         { message: userMessage, session_id: sessionId },
         { headers: { Authorization: `Bearer ${token}` } }
       );
@@ -340,7 +340,7 @@ export default function ChatPage() {
                         setLoading(true);
                         try {
                           const response = await axios.post(
-                            `${API}/chat`,
+                            `${API}/v1/chat`,
                             { message: userMessage, session_id: sessionId },
                             { headers: { Authorization: `Bearer ${token}` } }
                           );
