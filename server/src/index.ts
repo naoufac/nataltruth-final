@@ -38,6 +38,41 @@ seed();
 const app = express();
 app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
+
+// ── Plan tier limits ────────────────────────────────────────────────
+const PLAN_LIMITS: Record<string, { chatDaily: number; friendDaily: number; readingWords: number }> = {
+  free:         { chatDaily: 0,   friendDaily: 0,   readingWords: 0 },
+  enthusiast:   { chatDaily: 50,  friendDaily: 50,  readingWords: 2000 },
+  advanced:     { chatDaily: -1,  friendDaily: -1,  readingWords: 3000 },
+  professional: { chatDaily: -1,  friendDaily: -1,  readingWords: 4000 },
+};
+
+function getUserTier(req: ExpressRequest): string {
+  const user = (req as ExpressRequest & { user?: AuthUser }).user;
+  if (!user) return "free";
+  const founderEmails = (process.env.FOUNDER_EMAILS || process.env.ADMIN_EMAIL || "")
+    .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  if (founderEmails.includes(user.email.toLowerCase())) return "professional";
+  const row = db.prepare("SELECT subscription_tier FROM users WHERE id = ?").get(user.id) as { subscription_tier: string } | undefined;
+  return row?.subscription_tier || "free";
+}
+
+function checkApiLimit(userId: string, endpoint: string, dailyLimit: number): { allowed: boolean; reason?: string } {
+  if (dailyLimit === -1) return { allowed: true };
+  if (dailyLimit === 0) return { allowed: false, reason: "Upgrade to use AI features." };
+  const today = new Date().toISOString().slice(0, 10);
+  const row = db.prepare("SELECT count FROM api_usage WHERE user_id = ? AND date = ? AND endpoint = ?").get(userId, today, endpoint) as { count: number } | undefined;
+  if ((row?.count || 0) >= dailyLimit) {
+    return { allowed: false, reason: `Daily limit reached (${dailyLimit}). Upgrade for more.` };
+  }
+  return { allowed: true };
+}
+
+function incrementApiUsage(userId: string, endpoint: string): void {
+  const today = new Date().toISOString().slice(0, 10);
+  db.prepare("INSERT OR REPLACE INTO api_usage(user_id, date, endpoint, count) VALUES(?,?,?,COALESCE((SELECT count FROM api_usage WHERE user_id=? AND date=? AND endpoint=?),0)+1)")
+    .run(userId, today, endpoint, userId, today, endpoint);
+}
 app.use(
   cors({
     origin: [
@@ -333,6 +368,18 @@ app.post("/chat", async (req, res) => {
     let history: { role: string; content: string }[] | undefined;
 
     if (userId) {
+      const tier = getUserTier(req as ExpressRequest);
+      const limits = PLAN_LIMITS[tier] || PLAN_LIMITS.free;
+      if (limits.chatDaily === 0) {
+        res.status(403).json({ ok: false, error: "AI Coach requires a paid plan. Upgrade to chat." });
+        return;
+      }
+      const limitCheck = checkApiLimit(userId, "chat", limits.chatDaily);
+      if (!limitCheck.allowed) {
+        res.status(429).json({ ok: false, error: limitCheck.reason });
+        return;
+      }
+
       const histRows = db
         .prepare(
           "SELECT role, content FROM chat_messages WHERE session_id = ? AND user_id = ? ORDER BY timestamp ASC LIMIT 50"
@@ -360,6 +407,7 @@ app.post("/chat", async (req, res) => {
       db.prepare(
         "INSERT INTO chat_messages(id, user_id, session_id, role, content, timestamp) VALUES(?,?,?,?,?,?)"
       ).run(newId("msg"), userId, sid, "assistant", response, nowIso());
+      incrementApiUsage(userId, "chat");
     }
 
     res.json({ ok: true, response, model, session_id: sid });

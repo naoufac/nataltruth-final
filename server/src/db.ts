@@ -14,12 +14,15 @@ db.exec("PRAGMA foreign_keys = ON;");
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS users (
-  id            TEXT PRIMARY KEY,
-  email         TEXT UNIQUE NOT NULL COLLATE NOCASE,
-  password_hash TEXT NOT NULL,
-  name          TEXT NOT NULL,
-  role          TEXT NOT NULL DEFAULT 'user',
-  created_at    TEXT NOT NULL
+  id                 TEXT PRIMARY KEY,
+  email              TEXT UNIQUE NOT NULL COLLATE NOCASE,
+  password_hash      TEXT NOT NULL,
+  name               TEXT NOT NULL,
+  role               TEXT NOT NULL DEFAULT 'user',
+  subscription_tier  TEXT NOT NULL DEFAULT 'free',
+  stripe_customer_id TEXT,
+  subscription_id    TEXT,
+  created_at         TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS charts (
@@ -78,7 +81,39 @@ CREATE TABLE IF NOT EXISTS daily_horoscopes (
   content_json TEXT NOT NULL,
   PRIMARY KEY (sign, date)
 );
+
+CREATE TABLE IF NOT EXISTS api_usage (
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date       TEXT NOT NULL,
+  endpoint   TEXT NOT NULL,
+  count      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (user_id, date, endpoint)
+);
+
+CREATE TABLE IF NOT EXISTS reading_orders (
+  id              TEXT PRIMARY KEY,
+  email           TEXT,
+  name            TEXT,
+  birth_date      TEXT,
+  birth_time      TEXT,
+  birth_place     TEXT,
+  notes           TEXT,
+  status          TEXT NOT NULL DEFAULT 'pending',
+  stripe_payment_intent TEXT,
+  created_at      TEXT NOT NULL,
+  fulfilled_at    TEXT
+);
 `);
+
+// Migration: add subscription columns to users if missing
+try {
+  db.prepare("SELECT subscription_tier FROM users LIMIT 0").get();
+} catch {
+  db.exec("ALTER TABLE users ADD COLUMN subscription_tier TEXT NOT NULL DEFAULT 'free';");
+  db.exec("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT;");
+  db.exec("ALTER TABLE users ADD COLUMN subscription_id TEXT;");
+  console.log("[db] Migration: added subscription columns to users.");
+}
 
 // Migration: add category column to posts if missing (for existing DBs)
 try {
