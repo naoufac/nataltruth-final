@@ -2,251 +2,475 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ═══ NatalTruth Design System — cosmic, glass, premium ═══ */
-
+/* Gab44 Elevated Design System - Light & Dark Themes */
 @layer base {
   :root {
-    --background: 240 15% 6%;
-    --foreground: 40 20% 96%;
-    --card: 240 15% 8%;
-    --card-foreground: 40 20% 96%;
-    --primary: 38 92% 55%;
-    --primary-foreground: 240 15% 8%;
-    --secondary: 240 10% 14%;
-    --secondary-foreground: 40 20% 96%;
-    --muted: 240 10% 14%;
-    --muted-foreground: 240 5% 55%;
-    --border: 240 10% 18%;
+    /* Light Theme - Warm parchment, mystical, not clinical */
+    --background: 35 40% 95%;
+    --foreground: 240 10% 15%;
+    --card: 36 35% 98%;
+    --card-foreground: 240 10% 15%;
+    --popover: 36 35% 98%;
+    --popover-foreground: 240 10% 15%;
+    --primary: 38 92% 50%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 35 25% 91%;
+    --secondary-foreground: 240 10% 20%;
+    --muted: 35 25% 91%;
+    --muted-foreground: 240 5% 45%;
+    --accent: 245 50% 95%;
+    --accent-foreground: 245 50% 40%;
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+    --border: 35 20% 85%;
+    --input: 35 20% 85%;
+    --ring: 38 92% 50%;
     --radius: 0.75rem;
-    --chart-1: 38 92% 55%;
+    --chart-1: 38 92% 50%;
     --chart-2: 240 60% 60%;
     --chart-3: 280 60% 50%;
     --chart-4: 200 70% 50%;
     --chart-5: 340 70% 50%;
   }
 
-  [data-theme="light"] {
-    --background: 35 40% 96%;
-    --foreground: 240 10% 12%;
-    --card: 36 35% 99%;
-    --card-foreground: 240 10% 12%;
-    --primary: 38 92% 50%;
-    --primary-foreground: 0 0% 100%;
-    --secondary: 35 25% 91%;
-    --secondary-foreground: 240 10% 20%;
-    --muted: 35 25% 91%;
-    --muted-foreground: 240 5% 42%;
-    --border: 35 20% 85%;
+  .dark {
+    /* Dark Theme - Cosmic luxury, refined */
+    --background: 240 15% 6%;
+    --foreground: 40 20% 96%;
+    --card: 240 15% 8%;
+    --card-foreground: 40 20% 96%;
+    --popover: 240 15% 8%;
+    --popover-foreground: 40 20% 96%;
+    --primary: 42 92% 55%;
+    --primary-foreground: 240 15% 8%;
+    --secondary: 240 10% 14%;
+    --secondary-foreground: 40 20% 96%;
+    --muted: 240 10% 14%;
+    --muted-foreground: 240 5% 55%;
+    --accent: 240 10% 14%;
+    --accent-foreground: 40 20% 96%;
+    --destructive: 0 62% 40%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 10% 18%;
+    --input: 240 10% 18%;
+    --ring: 42 92% 55%;
   }
+}
 
-  * { border-color: hsl(var(--border)); }
-
-  html { scroll-behavior: smooth; }
-
+@layer base {
+  * {
+    @apply border-border;
+  }
+  
+  html {
+    scroll-behavior: smooth;
+    scroll-padding-top: 5rem;
+  }
+  
   body {
-    background-color: hsl(var(--background));
-    color: hsl(var(--foreground));
-    font-family: "Manrope", -apple-system, BlinkMacSystemFont, sans-serif;
+    @apply bg-background text-foreground antialiased;
+    font-family: 'Manrope', -apple-system, BlinkMacSystemFont, sans-serif;
     line-height: 1.7;
-    -webkit-font-smoothing: antialiased;
+    letter-spacing: 0.01em;
     transition: background-color 0.3s ease, color 0.3s ease;
   }
 
-  h1, h2, h3, h4 {
-    font-family: "Cinzel", serif;
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Cinzel', serif;
     line-height: 1.2;
-    font-weight: 600;
   }
-  h1 { font-size: clamp(2rem, 5vw, 3.5rem); }
-  h2 { font-size: clamp(1.5rem, 4vw, 2.5rem); }
 
-  a { color: hsl(var(--primary)); text-decoration: none; }
-  a:hover { text-decoration: underline; }
+  h1 { @apply text-4xl md:text-5xl lg:text-6xl tracking-normal; }
+  h2 { @apply text-3xl md:text-4xl tracking-normal; }
+  h3 { @apply text-xl md:text-2xl tracking-tight; }
 
-  ::selection { background: hsl(var(--primary) / 0.25); color: hsl(var(--foreground)); }
-  ::-webkit-scrollbar { width: 10px; }
-  ::-webkit-scrollbar-track { background: hsl(var(--muted)); }
-  ::-webkit-scrollbar-thumb { background: hsl(var(--muted-foreground) / 0.3); border-radius: 5px; }
+  p {
+    @apply leading-relaxed;
+  }
+
+  code, pre, .mono {
+    font-family: 'JetBrains Mono', monospace;
+  }
 }
 
-@layer components {
-  /* ── Cosmic background ── */
-  .cosmic-bg {
-    background:
-      radial-gradient(ellipse at top left, hsl(240 60% 20% / 0.15) 0%, transparent 45%),
-      radial-gradient(ellipse at bottom right, hsl(38 92% 50% / 0.08) 0%, transparent 40%),
-      hsl(var(--background));
-  }
-  [data-theme="light"] .cosmic-bg {
-    background:
-      radial-gradient(ellipse at top left, hsl(245 50% 60% / 0.08) 0%, transparent 45%),
-      radial-gradient(ellipse at bottom right, hsl(38 92% 50% / 0.06) 0%, transparent 40%),
-      hsl(var(--background));
-  }
-
-  /* ── Glass cards ── */
-  .glass-card {
-    background: hsl(var(--card) / 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid hsl(var(--border) / 0.6);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-    border-radius: var(--radius);
-    transition: box-shadow 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
-  }
-  .glass-card:hover {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    border-color: hsl(var(--primary) / 0.3);
-  }
-
-  /* ── Buttons ── */
-  .btn-glow {
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    box-shadow: 0 4px 20px hsl(var(--primary) / 0.25);
-    transition: box-shadow 0.3s ease, transform 0.3s ease;
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-medium;
-  }
-  .btn-glow:hover {
-    box-shadow: 0 6px 28px hsl(var(--primary) / 0.4);
-    transform: translateY(-2px);
-    text-decoration: none;
-  }
-  .btn-outline {
-    border: 1px solid hsl(var(--border));
-    color: hsl(var(--foreground));
-    @apply inline-flex items-center gap-2 rounded-xl px-6 py-3 font-medium transition;
-  }
-  .btn-outline:hover { background: hsl(var(--muted)); text-decoration: none; }
-
-  /* ── Inputs ── */
-  .input {
-    background: hsl(var(--card) / 0.5);
-    border: 1px solid hsl(var(--border));
-    color: hsl(var(--foreground));
-    @apply w-full rounded-xl px-4 py-3 outline-none transition;
-  }
-  .input:focus {
-    border-color: hsl(var(--primary));
-    box-shadow: 0 0 0 3px hsl(var(--primary) / 0.15);
-  }
-  .label {
-    @apply mb-1.5 block text-sm font-medium;
-    color: hsl(var(--muted-foreground));
-  }
-
-  /* ── Layout ── */
-  .container-wide { @apply mx-auto w-full max-w-6xl px-5; }
-  .container-prose { @apply mx-auto w-full max-w-4xl px-5; }
-
-  /* ── Chips ── */
-  .chip {
-    background: hsl(var(--primary) / 0.1);
-    border: 1px solid hsl(var(--primary) / 0.2);
-    color: hsl(var(--primary));
-    @apply inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium;
-  }
-
-  /* ── Deep reading content ── */
-  .deep-reading { color: hsl(var(--foreground)); line-height: 1.8; }
-  .deep-reading h2 {
-    font-size: 1.5em; margin-top: 2em; margin-bottom: 0.5em;
-    color: hsl(var(--foreground)); border-bottom: 1px solid hsl(var(--border) / 0.5);
-    padding-bottom: 0.3em;
-  }
-  .deep-reading h2:first-child { margin-top: 0; }
-  .deep-reading h3 { font-size: 1.2em; margin-top: 1.5em; color: hsl(var(--muted-foreground)); }
-  .deep-reading p { margin: 0 0 1.1em; color: hsl(var(--foreground) / 0.82); }
-  .deep-reading strong { color: hsl(var(--primary)); font-weight: 600; }
-  .deep-reading em { color: hsl(var(--foreground)); }
-  .deep-reading ul, .deep-reading ol { margin: 0 0 1.1em; padding-left: 1.5em; color: hsl(var(--foreground) / 0.82); }
-  .deep-reading li { margin-bottom: 0.5em; list-style: disc; }
-  .deep-reading ol li { list-style: decimal; }
-  .deep-reading blockquote {
-    border-left: 3px solid hsl(var(--primary));
-    padding: 0.8em 1.2em; margin: 1.4em 0;
-    background: hsl(var(--primary) / 0.05);
-    border-radius: 0 12px 12px 0;
-    color: hsl(var(--foreground));
-  }
-  .deep-reading blockquote p { margin: 0; }
-  .deep-reading hr { border: none; border-top: 1px solid hsl(var(--border)); margin: 2em 0; }
-
-  /* ── Prose (blog) ── */
-  .prose { color: hsl(var(--foreground)); }
-  .prose h2, .prose h3 { margin-top: 1.8em; margin-bottom: 0.5em; }
-  .prose p { margin: 0 0 1.1em; max-width: 68ch; color: hsl(var(--foreground) / 0.82); }
-  .prose ul, .prose ol { margin: 0 0 1.1em; padding-left: 1.4em; max-width: 68ch; }
-  .prose li { margin-bottom: 0.4em; }
-  .prose blockquote { border-left: 3px solid hsl(var(--primary)); padding-left: 1em; margin: 1.2em 0; color: hsl(var(--muted-foreground)); font-style: italic; }
-  .prose code { font-family: "JetBrains Mono", monospace; background: hsl(var(--muted)); padding: 0.1em 0.35em; border-radius: 4px; font-size: 0.9em; }
+/* Modern Glass Header */
+.glass-header {
+  @apply bg-background/70 dark:bg-background/60;
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-bottom: 1px solid hsl(var(--border) / 0.5);
+  transition: background-color 0.3s ease, box-shadow 0.3s ease;
 }
 
-/* ── Animations ── */
-@keyframes fadeIn { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
-@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
-@keyframes pulseGlow { 0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.2); } 50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.4); } }
+.glass-header.scrolled {
+  @apply bg-background/90 dark:bg-background/85;
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.05);
+}
 
-.fade-in { animation: fadeIn 0.6s ease-out forwards; }
-.animate-float { animation: float 6s ease-in-out infinite; }
-.animate-pulse-glow { animation: pulseGlow 3s ease-in-out infinite; }
+.dark .glass-header.scrolled {
+  box-shadow: 0 4px 30px rgba(0, 0, 0, 0.3);
+}
 
+/* Glass Cards - Refined */
+.glass-card {
+  @apply bg-card/80 dark:bg-card/60;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid hsl(var(--border) / 0.5);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.3s ease, border-color 0.3s ease;
+}
+
+.dark .glass-card {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.2);
+}
+
+.glass-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+  border-color: hsl(var(--primary) / 0.3);
+}
+
+.dark .glass-card:hover {
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+/* Primary Button Glow */
+.glow-button {
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.25);
+  transition: box-shadow 0.3s ease, transform 0.3s ease;
+}
+
+.glow-button:hover {
+  box-shadow: 0 6px 28px hsl(var(--primary) / 0.4);
+  transform: translateY(-2px);
+}
+
+/* Hero Gradients */
+.hero-gradient-light {
+  background: linear-gradient(180deg, 
+    hsl(40 30% 98% / 0.3) 0%, 
+    hsl(40 30% 98% / 0.7) 50%,
+    hsl(40 30% 98% / 0.95) 100%
+  );
+}
+
+.hero-gradient-dark {
+  background: linear-gradient(180deg, 
+    hsl(240 15% 6% / 0.4) 0%, 
+    hsl(240 15% 6% / 0.7) 50%,
+    hsl(240 15% 6% / 0.98) 100%
+  );
+}
+
+/* Cosmic gradient for dark theme */
+.cosmic-gradient {
+  background: radial-gradient(ellipse at top, hsl(240 60% 20% / 0.15) 0%, transparent 50%),
+              radial-gradient(ellipse at bottom right, hsl(38 92% 50% / 0.08) 0%, transparent 40%);
+}
+
+/* Light mode cosmic gradient - maintains mystical identity */
+:root .cosmic-gradient {
+  background: radial-gradient(ellipse at top, hsl(245 50% 60% / 0.08) 0%, transparent 50%),
+              radial-gradient(ellipse at bottom right, hsl(38 92% 50% / 0.06) 0%, transparent 40%);
+}
+
+/* Subtle cosmic background for inner pages (dashboard, etc.) */
+.cosmic-page-bg {
+  background: radial-gradient(ellipse at top left, hsl(245 50% 60% / 0.07) 0%, transparent 45%),
+              radial-gradient(ellipse at bottom right, hsl(38 92% 50% / 0.05) 0%, transparent 45%);
+}
+
+.dark .cosmic-page-bg {
+  background: radial-gradient(ellipse at top left, hsl(240 60% 20% / 0.1) 0%, transparent 40%),
+              radial-gradient(ellipse at bottom right, hsl(38 92% 50% / 0.06) 0%, transparent 40%);
+}
+
+/* Subtle noise overlay */
+.noise-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 9999;
+  opacity: 0.015;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E");
+}
+
+.dark .noise-overlay {
+  opacity: 0.025;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-8px); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px hsl(var(--primary) / 0.2); }
+  50% { box-shadow: 0 0 40px hsl(var(--primary) / 0.4); }
+}
+
+.fade-in {
+  animation: fadeIn 0.6s ease-out forwards;
+}
+
+.fade-in-delay-1 { animation-delay: 0.1s; opacity: 0; }
+.fade-in-delay-2 { animation-delay: 0.2s; opacity: 0; }
+.fade-in-delay-3 { animation-delay: 0.3s; opacity: 0; }
+.fade-in-delay-4 { animation-delay: 0.4s; opacity: 0; }
+.fade-in-delay-5 { animation-delay: 0.5s; opacity: 0; }
+
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 3s ease-in-out infinite;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb {
+  background: hsl(var(--muted-foreground) / 0.3);
+  border-radius: 5px;
+  border: 2px solid hsl(var(--muted));
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.6);
+}
+
+/* Selection */
+::selection {
+  background: hsl(var(--primary) / 0.2);
+  color: hsl(var(--foreground));
+}
+
+/* Link hover effect */
+.link-hover {
+  position: relative;
+  transition: color 0.2s ease;
+}
+
+.link-hover::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 0;
+  width: 0;
+  height: 2px;
+  background: hsl(var(--primary));
+  transition: width 0.3s ease;
+  border-radius: 1px;
+}
+
+.link-hover:hover::after {
+  width: 100%;
+}
+
+/* Zodiac badge */
+.zodiac-badge {
+  @apply bg-primary/10 border border-primary/20 text-primary;
+  transition: background-color 0.2s ease;
+}
+
+.zodiac-badge:hover {
+  @apply bg-primary/20;
+}
+
+/* Chat bubbles */
+.chat-bubble-user {
+  @apply bg-primary/10 border border-primary/20;
+}
+
+.chat-bubble-assistant {
+  @apply bg-muted border border-border;
+}
+
+/* Friend (Saoul) chat bubble — warmer, rose-tinted */
+.chat-bubble-friend {
+  @apply bg-muted border border-border;
+  border-color: hsl(350 60% 50% / 0.15);
+  background: hsl(350 60% 50% / 0.06);
+}
+
+.dark .chat-bubble-friend {
+  border-color: hsl(350 60% 60% / 0.15);
+  background: hsl(350 60% 60% / 0.08);
+}
+
+/* Friend preview card on landing page */
+.friend-preview-card {
+  border-color: hsl(350 60% 50% / 0.15);
+}
+
+.dark .friend-preview-card {
+  border-color: hsl(350 60% 60% / 0.15);
+}
+
+/* Transit card */
+.transit-card {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.transit-card:hover {
+  transform: translateY(-4px);
+}
+
+/* Pricing popular */
+.pricing-popular {
+  border: 2px solid hsl(var(--primary));
+  box-shadow: 0 0 40px hsl(var(--primary) / 0.15);
+}
+
+/* Feature card */
+.feature-card {
+  @apply bg-card/50 border border-border/50;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.feature-card:hover {
+  @apply bg-card border-primary/30;
+}
+
+/* Sidebar */
+.sidebar-link {
+  transition: background-color 0.2s ease, padding-left 0.2s ease, color 0.2s ease;
+}
+
+.sidebar-link:hover {
+  @apply bg-muted;
+  padding-left: 1.25rem;
+}
+
+.sidebar-link.active {
+  @apply bg-primary/10 border-l-2 border-primary text-primary;
+}
+
+/* Testimonial card */
+.testimonial-card {
+  @apply bg-card/50;
+}
+
+/* Loading skeleton */
+.skeleton {
+  background: linear-gradient(90deg, 
+    hsl(var(--muted)) 25%, 
+    hsl(var(--muted-foreground) / 0.1) 50%, 
+    hsl(var(--muted)) 75%
+  );
+  background-size: 200% 100%;
+  animation: skeleton-loading 1.5s ease-in-out infinite;
+}
+
+@keyframes skeleton-loading {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* Stat number animation */
+@keyframes countUp {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.stat-number {
+  animation: countUp 0.8s ease-out forwards;
+}
+
+/* Theme toggle button */
+.theme-toggle {
+  @apply relative w-14 h-8 rounded-full bg-muted border border-border;
+  transition: background-color 0.3s ease, border-color 0.3s ease;
+}
+
+.theme-toggle::after {
+  content: '';
+  @apply absolute top-1 left-1 w-6 h-6 rounded-full bg-primary;
+  transition: transform 0.3s ease;
+}
+
+.dark .theme-toggle::after {
+  transform: translateX(22px);
+}
+
+/* Debug wrapper */
+@layer base {
+  [data-debug-wrapper="true"] {
+    display: contents !important;
+  }
+}
+
+/* Focus states for accessibility */
+:focus-visible {
+  @apply outline-none ring-2 ring-primary ring-offset-2 ring-offset-background;
+}
+
+/* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
-  *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+  *, ::before, ::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
 
-/* ═══ Backwards compatibility: map old class names → new design system ═══ */
-/* This lets all existing components work with the new cosmic theme without edits. */
+/* =========================================================
+   Print / Save as PDF
+   ========================================================= */
+@media print {
+  /* White background, dark text */
+  body {
+    background: white !important;
+    color: #111 !important;
+    font-size: 11pt;
+  }
 
-:root {
-  --ink: hsl(var(--foreground));
-  --ink-soft: hsl(var(--muted-foreground));
-  --ink-faint: hsl(var(--muted-foreground) / 0.7);
-  --bg: hsl(var(--background));
-  --bg-elevated: hsl(var(--card));
-  --bg-subtle: hsl(var(--muted));
-  --line: hsl(var(--border));
-  --primary-soft: hsl(var(--primary) / 0.1);
-  --primary-ink: hsl(var(--primary));
-  --trust: hsl(var(--primary));
-  --trust-soft: hsl(var(--primary) / 0.08);
-  --warn: hsl(38 80% 55%);
-  --font-base: 17.5px;
-}
+  /* Remove noise overlay */
+  .noise-overlay { display: none !important; }
 
-@layer components {
-  .card {
-    background: hsl(var(--card) / 0.7);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid hsl(var(--border) / 0.6);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-    @apply rounded-2xl;
-    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  /* Flatten glass-cards to plain bordered boxes */
+  .glass-card {
+    background: white !important;
+    border: 1px solid #e5e7eb !important;
+    box-shadow: none !important;
+    backdrop-filter: none !important;
   }
-  .card:hover {
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
-    border-color: hsl(var(--primary) / 0.3);
-  }
-  .btn-primary {
-    background: hsl(var(--primary));
-    color: hsl(var(--primary-foreground));
-    box-shadow: 0 4px 20px hsl(var(--primary) / 0.25);
-    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-medium transition;
-  }
-  .btn-primary:hover {
-    background: hsl(var(--primary) / 0.9);
-    box-shadow: 0 6px 28px hsl(var(--primary) / 0.4);
-    transform: translateY(-2px);
-    text-decoration: none;
-  }
-  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
-  .btn-ghost {
-    color: hsl(var(--muted-foreground));
-    @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 transition;
-  }
-  .btn-ghost:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); text-decoration: none; }
 
-  /* Deep reading (also under new name) */
-  .deep-reading-content { @apply deep-reading; }
+  /* Print title added automatically */
+  h1.font-serif::before {
+    content: "Gab44 — ";
+    font-weight: 400;
+    opacity: 0.4;
+  }
+
+  /* Ensure color indicators still show */
+  .text-primary { color: #b45309 !important; }
+
+  /* Avoid page breaks inside a card */
+  .glass-card {
+    break-inside: avoid;
+  }
+
+  /* Suppress animations */
+  *, ::before, ::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }

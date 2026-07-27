@@ -1,0 +1,5 @@
+Source (exact tree, no merge with API/engine):
+  https://github.com/naoclaw/Gab44-V2/tree/main/frontend
+  Branch: main
+  Captured as standalone folder: NatalTruth/frontend/
+  Do not mix with engine/ or server/ until explicit wiring step.

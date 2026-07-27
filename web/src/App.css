@@ -1,0 +1,187 @@
+/* Gab44 Custom Component Styles */
+
+/* Remove default text centering */
+.App {
+  min-height: 100vh;
+}
+
+/* Section spacing for readability */
+section {
+  scroll-margin-top: 5rem;
+}
+
+/* Nav link styling */
+.nav-link {
+  position: relative;
+  font-weight: 500;
+  transition: color 0.2s ease;
+}
+
+.nav-link:hover {
+  color: hsl(var(--primary));
+}
+
+/* Hero text shadow for readability */
+.hero-title {
+  text-shadow: 0 2px 20px rgba(0, 0, 0, 0.1);
+}
+
+.dark .hero-title {
+  text-shadow: 0 2px 30px rgba(0, 0, 0, 0.5);
+}
+
+/* Card hover lift effect */
+.card-lift {
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+}
+
+.card-lift:hover {
+  transform: translateY(-6px);
+}
+
+/* Gradient text */
+.gradient-text {
+  background: linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(42 100% 65%) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Section divider */
+.section-divider {
+  height: 1px;
+  background: linear-gradient(90deg, 
+    transparent 0%, 
+    hsl(var(--border)) 20%, 
+    hsl(var(--border)) 80%, 
+    transparent 100%
+  );
+}
+
+/* Input focus enhancement */
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: hsl(var(--primary) / 0.5);
+  box-shadow: 0 0 0 3px hsl(var(--primary) / 0.1);
+}
+
+/* Button variants */
+.btn-primary {
+  @apply bg-primary text-primary-foreground;
+  transition: all 0.2s ease;
+}
+
+.btn-primary:hover {
+  filter: brightness(1.1);
+}
+
+.btn-secondary {
+  @apply bg-secondary text-secondary-foreground border border-border;
+}
+
+.btn-secondary:hover {
+  @apply bg-muted;
+}
+
+.btn-ghost {
+  @apply bg-transparent;
+}
+
+.btn-ghost:hover {
+  @apply bg-muted;
+}
+
+/* Pricing tier indicator */
+.tier-seeker { --tier-color: 120 60% 50%; }
+.tier-enthusiast { --tier-color: 38 92% 50%; }
+.tier-advanced { --tier-color: 280 60% 50%; }
+.tier-professional { --tier-color: 200 70% 50%; }
+
+/* Chart wheel styling */
+.chart-wheel {
+  background: radial-gradient(circle, 
+    hsl(var(--primary) / 0.05) 0%, 
+    transparent 70%
+  );
+}
+
+/* Aspect colors */
+.aspect-conjunction { color: hsl(38 92% 50%); }
+.aspect-trine { color: hsl(142 76% 45%); }
+.aspect-sextile { color: hsl(180 70% 45%); }
+.aspect-square { color: hsl(25 95% 53%); }
+.aspect-opposition { color: hsl(0 84% 60%); }
+
+/* Element colors */
+.element-fire { color: hsl(25 95% 53%); }
+.element-earth { color: hsl(142 60% 45%); }
+.element-air { color: hsl(195 90% 50%); }
+.element-water { color: hsl(215 80% 55%); }
+
+/* Smooth page transitions */
+.page-enter {
+  opacity: 0;
+  transform: translateY(10px);
+}
+
+.page-enter-active {
+  opacity: 1;
+  transform: translateY(0);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+/* Toast customization */
+[data-sonner-toaster] {
+  font-family: 'Manrope', sans-serif !important;
+}
+
+/* Mobile menu animation */
+.mobile-menu-enter {
+  opacity: 0;
+  max-height: 0;
+}
+
+.mobile-menu-enter-active {
+  opacity: 1;
+  max-height: 500px;
+  transition: all 0.3s ease;
+}
+
+/* Sidebar collapse animation */
+.sidebar-collapse {
+  transition: width 0.3s ease, padding 0.3s ease;
+}
+
+/* Progress bar animation */
+.progress-animate {
+  transition: width 0.6s ease;
+}
+
+/* Floating action button */
+.fab {
+  @apply fixed bottom-6 right-6 w-14 h-14 rounded-full bg-primary text-primary-foreground;
+  box-shadow: 0 4px 20px hsl(var(--primary) / 0.3);
+  transition: all 0.3s ease;
+  z-index: 50;
+}
+
+.fab:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 28px hsl(var(--primary) / 0.4);
+}
+
+/* Reading mode - max width for text */
+.reading-width {
+  max-width: 65ch;
+}
+
+/* Subtle border glow on focus */
+.focus-glow:focus-within {
+  box-shadow: 0 0 0 2px hsl(var(--background)), 0 0 0 4px hsl(var(--primary) / 0.3);
+}
+
+/* Theme transition overlay */
+.theme-transition {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
