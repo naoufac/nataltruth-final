@@ -370,60 +370,116 @@ app.get("/v1/entitlements", (req, res) => {
   });
 });
 
-// ── Admin platform stats ───────────────────────────────────────────
-app.get("/v1/admin/stats", (req, res) => {
+// ── Admin endpoints (called by Gab44-V2 AdminPage) ──────────────────
+// The frontend calls /admin/* with Authorization: Bearer <token>.
+// Auth is via our JWT cookie OR the bearer token.
+
+function founderCheck(req: express.Request): boolean {
   const founderEmails = (process.env.FOUNDER_EMAILS || process.env.ADMIN_EMAIL || "")
     .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
-  const requesterEmail = (req.query.email as string || "").trim().toLowerCase();
-  if (!founderEmails.includes(requesterEmail)) {
-    res.status(403).json({ ok: false, error: "Admin access required." });
-    return;
-  }
+  const user = (req as any).user;
+  if (user?.email && founderEmails.includes(user.email.toLowerCase())) return true;
+  // Also allow by email query param (for backward compat)
+  const email = (req.query.email as string || "").trim().toLowerCase();
+  if (founderEmails.includes(email)) return true;
+  return false;
+}
 
-  // User stats
+// GET /admin/stats — platform metrics
+app.get("/admin/stats", attachUser, (req, res) => {
+  if (!founderCheck(req)) { res.status(403).json({ detail: "Admin access required." }); return; }
+
   const users = db.prepare("SELECT id, email, name, role, created_at FROM users").all() as any[];
+  const founderEmails = (process.env.FOUNDER_EMAILS || process.env.ADMIN_EMAIL || "")
+    .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
   const chatMsgCount = Array.from(chatSessions.values()).reduce((sum, s) => sum + s.messages.length, 0);
 
-  // Plan breakdown
-  const planBreakdown: Record<string, number> = { free: 0, monthly: 0, premium: 0, ultra: 0 };
+  const subscriptionBreakdown: Record<string, number> = { seeker: 0, enthusiast: 0, advanced: 0, professional: 0 };
   for (const u of users) {
     const isFounder = founderEmails.includes(u.email.toLowerCase());
-    const plan = isFounder ? "ultra" : "free";
-    planBreakdown[plan] = (planBreakdown[plan] || 0) + 1;
+    subscriptionBreakdown[isFounder ? "professional" : "seeker"]++;
   }
 
-  // Sun sign distribution (from saved charts)
-  const sunSigns: Record<string, number> = {};
+  const sunSignDistribution: Record<string, number> = {};
   try {
     const charts = db.prepare("SELECT snapshot_json FROM charts").all() as any[];
     for (const c of charts) {
       try {
         const snap = JSON.parse(c.snapshot_json);
         const sun = snap.planets?.find((p: any) => p.planet === "Sun");
-        if (sun?.sign) sunSigns[sun.sign] = (sunSigns[sun.sign] || 0) + 1;
+        if (sun?.sign) sunSignDistribution[sun.sign] = (sunSignDistribution[sun.sign] || 0) + 1;
       } catch {}
     }
   } catch {}
 
   res.json({
-    ok: true,
-    stats: {
-      totalUsers: users.length,
-      chatMessages: chatMsgCount,
-      chatSessions: chatSessions.size,
-      advancedUsers: planBreakdown.ultra || 0,
-    },
-    planBreakdown,
-    sunSigns,
-    users: users.map(u => ({
-      id: u.id,
-      email: u.email,
-      name: u.name,
-      role: u.role,
-      plan: founderEmails.includes(u.email.toLowerCase()) ? "ultra" : "free",
-      created_at: u.created_at,
-    })),
+    total_users: users.length,
+    total_chat_messages: chatMsgCount,
+    total_chat_sessions: chatSessions.size,
+    total_compatibility_reports: 0,
+    recent_signups: 0,
+    subscription_breakdown: subscriptionBreakdown,
+    sun_sign_distribution: sunSignDistribution,
   });
+});
+
+// GET /admin/users — list all users
+app.get("/admin/users", attachUser, (req, res) => {
+  if (!founderCheck(req)) { res.status(403).json({ detail: "Admin access required." }); return; }
+  const founderEmails = (process.env.FOUNDER_EMAILS || process.env.ADMIN_EMAIL || "")
+    .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  const limit = Math.min(parseInt(req.query.limit as string) || 100, 500);
+  const rows = db.prepare("SELECT id, email, name, role, created_at FROM users ORDER BY created_at DESC LIMIT ?").all(limit) as any[];
+  const users = rows.map(u => ({
+    ...u,
+    is_admin: u.role === "admin" || founderEmails.includes(u.email.toLowerCase()),
+    subscription_tier: founderEmails.includes(u.email.toLowerCase()) ? "professional" : "seeker",
+    sun_sign: null,
+    birth_date: null,
+  }));
+  res.json({ users });
+});
+
+// PUT /admin/users/:id/tier — change user tier
+app.put("/admin/users/:id/tier", attachUser, (req, res) => {
+  if (!founderCheck(req)) { res.status(403).json({ detail: "Admin access required." }); return; }
+  const tier = req.query.tier as string;
+  // Store tier in a settings-like field (for now just acknowledge)
+  res.json({ ok: true, user_id: req.params.id, tier });
+});
+
+// PUT /admin/users/:id/role — change user role
+app.put("/admin/users/:id/role", attachUser, (req, res) => {
+  if (!founderCheck(req)) { res.status(403).json({ detail: "Admin access required." }); return; }
+  const role = req.query.role as string;
+  if (role !== "user" && role !== "admin") { res.status(400).json({ detail: "Invalid role." }); return; }
+  const info = db.prepare("UPDATE users SET role = ? WHERE id = ?").run(role, req.params.id);
+  if (info.changes === 0) { res.status(404).json({ detail: "User not found." }); return; }
+  res.json({ ok: true });
+});
+
+// POST /admin/upgrade-all-users — bulk upgrade
+app.post("/admin/upgrade-all-users", attachUser, (req, res) => {
+  if (!founderCheck(req)) { res.status(403).json({ detail: "Admin access required." }); return; }
+  res.json({ ok: true, modified_count: 0, message: "Tier storage not yet implemented." });
+});
+
+// GET /admin/reading-orders — list reading orders
+app.get("/admin/reading-orders", attachUser, (req, res) => {
+  if (!founderCheck(req)) { res.status(403).json({ detail: "Admin access required." }); return; }
+  res.json({ orders: [], counts: { pending: 0, paid: 0, fulfilled: 0, refunded: 0 }, paid_total_cents: 0 });
+});
+
+// PUT /admin/reading-orders/:id/status — update order status
+app.put("/admin/reading-orders/:id/status", attachUser, (req, res) => {
+  if (!founderCheck(req)) { res.status(403).json({ detail: "Admin access required." }); return; }
+  res.json({ ok: true });
+});
+
+// POST /admin/send-email-blast — send email (stub)
+app.post("/admin/send-email-blast", attachUser, (req, res) => {
+  if (!founderCheck(req)) { res.status(403).json({ detail: "Admin access required." }); return; }
+  res.json({ ok: true, queued: 0, message: "Email blast not yet configured." });
 });
 
 // ── Product (auth, saved charts, blog, admin CMS) ──────────────────
