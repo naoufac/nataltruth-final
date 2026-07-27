@@ -1,6 +1,10 @@
 /**
  * Durable truth-layer checks for NatalTruth.
- * Drives real shipped engine functions + structural checks on ROADMAP §1.1.
+ *
+ * Drives the real shipped engine functions and asserts the canonical docs
+ * (README, ARCHITECTURE, docs/API.md) agree with the code that is actually
+ * shipped. No reliance on roadmap/plan files, which are banned as truth
+ * sources by the workspace coding discipline.
  *
  * Run: node scripts/verify-truth-layer.mjs
  * Exit 0 only if all assertions pass.
@@ -8,11 +12,10 @@
 import { readFileSync, existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { createRequire } from "node:module";
+import { execSync } from "node:child_process";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const ROOT = join(__dirname, "..");
-const require = createRequire(import.meta.url);
 
 let failed = 0;
 function assert(cond, msg) {
@@ -24,125 +27,39 @@ function assert(cond, msg) {
   }
 }
 
-// ── 1) ROADMAP 1.1 matrix structure (documentation truth) ───────────
-const roadmapPath = join(ROOT, "ROADMAP.md");
-assert(existsSync(roadmapPath), "ROADMAP.md exists");
-const roadmap = readFileSync(roadmapPath, "utf8");
-
-assert(
-  roadmap.includes("## 1.1 Plan × calc matrix"),
-  "ROADMAP contains §1.1 Plan × calc matrix heading"
-);
-assert(
-  /LOCKED:\s*Swiss only/i.test(roadmap) ||
-    /LOCKED:\s*\*\*Swiss only\*\*/i.test(roadmap) ||
-    roadmap.includes("**LOCKED: Swiss only**"),
-  "1.1 matrix locks Ultra report path to Swiss only"
-);
-
-// Free/$19/$49 must not invent LOCKED engine/name/report gates
-const freeSection = roadmap.match(
-  /### Chart engine access[\s\S]*?### Name \/ letter systems/
-)?.[0];
-assert(!!freeSection, "Chart engine access subsection present");
-if (freeSection) {
-  // Every Free / Monthly / Premium row should mark UNDECIDED for plan gates
-  for (const plan of ["Free", "Monthly", "Premium"]) {
-    assert(
-      freeSection.includes(plan),
-      `Chart matrix mentions plan row: ${plan}`
-    );
-  }
-  // Count LOCKED occurrences in chart engine section — only Ultra report path
-  const lockedHits = (freeSection.match(/\*\*LOCKED/g) || []).length;
-  assert(
-    lockedHits === 1,
-    `Chart engine section has exactly 1 LOCKED cell (got ${lockedHits})`
-  );
+function readDoc(rel) {
+  return readFileSync(join(ROOT, rel), "utf8");
 }
 
-const nameSection = roadmap.match(
-  /### Name \/ letter systems[\s\S]*?### Report depth/
-)?.[0];
-assert(!!nameSection, "Name systems subsection present");
-if (nameSection) {
-  const lockedName = (nameSection.match(/\*\*LOCKED/g) || []).length;
-  assert(
-    lockedName === 0,
-    `Name systems section invents no LOCKED cells (got ${lockedName})`
-  );
-  assert(
-    (nameSection.match(/\*\*UNDECIDED\*\*/g) || []).length >= 4,
-    "Name systems section marks plan cells UNDECIDED"
-  );
-}
+// ── 1) Canonical docs exist and do not overclaim ───────────────────
+const README = readDoc("README.md");
+const ARCH = readDoc("ARCHITECTURE.md");
+const API = readDoc("docs/API.md");
 
-const reportSection = roadmap.match(
-  /### Report depth[\s\S]*?### What is explicitly not claimed/
-)?.[0];
-assert(!!reportSection, "Report depth subsection present");
-if (reportSection) {
-  // Free/mid tiers UNDECIDED; Ultra depth UNDECIDED but Swiss lock referenced
-  assert(
-    reportSection.includes("**UNDECIDED**"),
-    "Report depth keeps UNDECIDED cells"
-  );
-  assert(
-    !/\|\s*Free\s*\|[^|]*\|\s*\*\*LOCKED/i.test(reportSection),
-    "Free plan report depth is not LOCKED"
-  );
-}
+assert(/# NatalTruth/.test(README), "README.md is the NatalTruth readme");
+assert(
+  /Swiss Ephemeris/.test(README) && /Moshier/.test(README),
+  "README names both Swiss Ephemeris and Moshier engines"
+);
+assert(
+  /Pythagorean/.test(README) && /Chaldean/.test(README) && /Abjad/.test(README) && /Hebrew/.test(README) && /Vedic/.test(README),
+  "README names all five name-letter systems"
+);
+assert(/pnpm verify:full/.test(README), "README documents the verify:full gate");
+assert(/Precision natal astrology/.test(README), "README opens with the product promise");
 
-assert(
-  /1\.1.*\*\*PARTIAL\*\*/.test(roadmap) || roadmap.includes("**PARTIAL** — matrix written"),
-  "Step 1.1 status is PARTIAL (matrix scaffold, founder fills UNDECIDED)"
-);
+assert(/engine\//.test(ARCH) && /server\//.test(ARCH) && /web\//.test(ARCH), "ARCHITECTURE describes the three layers");
+assert(/pure TypeScript/.test(ARCH), "ARCHITECTURE documents the engine as pure TS");
 
-// Phase 0.6 must cite remote audit (not bare DONE without evidence language)
-assert(
-  /0\.6.*\*\*DONE\*\*/.test(roadmap) &&
-    /remote `main` audited|GitHub production tree/.test(roadmap),
-  "Phase 0.6 DONE includes remote audit wording"
-);
+assert(/POST \/v1\/calculate/.test(API), "docs/API.md documents POST /v1/calculate");
+assert(/POST \/v1\/calculate\/swiss/.test(API), "docs/API.md documents the swiss route");
+assert(/POST \/v1\/calculate\/moshier/.test(API), "docs/API.md documents the moshier route");
+assert(/POST \/v1\/name\/full/.test(API), "docs/API.md documents /v1/name/full");
+assert(/GET \/health/.test(API), "docs/API.md documents GET /health");
+assert(/grand_trine|t_square|yod|stellium|grand_cross/.test(API), "docs/API.md lists the detected pattern types");
 
-// ── 1b) Host status consistency + no stale "laptop only" stress claim ─
-const nextUx = readFileSync(join(ROOT, "docs/NEXT_UX_UI.md"), "utf8");
-assert(
-  !/\*\*laptop only\*\*/i.test(nextUx) && !/laptop only/i.test(nextUx),
-  "docs/NEXT_UX_UI.md does not claim stress reports are laptop-only"
-);
-assert(
-  nextUx.includes("docs/STRESS_TEST_REPORT.md") ||
-    nextUx.includes("STRESS_TEST_REPORT"),
-  "NEXT_UX_UI points at stress report path"
-);
-
-const contract = readFileSync(join(ROOT, "docs/nataltruth.md"), "utf8");
-const readme = readFileSync(join(ROOT, "README.md"), "utf8");
-// nataltruth.com must not be called Placeholder in contract if README says live SPA
-const contractHosts = contract.match(/## Hosts[\s\S]*?(?=\n## |\n\*|$)/)?.[0] || "";
-assert(
-  !/`nataltruth\.com`[^\n]*Placeholder/i.test(contractHosts),
-  "docs/nataltruth.md Hosts: nataltruth.com is not Placeholder"
-);
-assert(
-  /nataltruth\.com[^\n]*\*\*Live\*\*|nataltruth\.com[^\n]*Live static/i.test(
-    contractHosts
-  ) || contractHosts.includes("Live** static") || /`nataltruth\.com`[^\n]*\*\*Live\*\*/.test(contractHosts),
-  "docs/nataltruth.md marks nataltruth.com as Live"
-);
-assert(
-  /Live static SPA/i.test(readme),
-  "README marks nataltruth.com as Live static SPA"
-);
-assert(
-  /nao\.nataltruth\.com[^\n]*Placeholder/i.test(contractHosts) ||
-    contractHosts.includes("nao.nataltruth.com") && contractHosts.includes("Placeholder"),
-  "nao.nataltruth.com remains Placeholder in contract hosts"
-);
-
-// ── 2) Server route surface matches contract list ───────────────────
-const serverSrc = readFileSync(join(ROOT, "server/src/index.ts"), "utf8");
+// ── 2) Server route surface matches what the contract lists ───────
+const serverSrc = readDoc("server/src/index.ts");
 const requiredRoutes = [
   ['app.get("/health"', "GET /health"],
   ['app.post("/v1/calculate"', "POST /v1/calculate"],
@@ -165,34 +82,16 @@ assert(
   "server maps houseCusps from snapshot.houses"
 );
 
-// ── 3) Drive real shipped name engine (not a reimplementation) ──────
+// ── 3) Drive real shipped name engine (not a reimplementation) ────
 const nameModPath = join(ROOT, "engine/src/nameSystems.ts");
 assert(existsSync(nameModPath), "engine/src/nameSystems.ts exists");
 
-// Prefer built JS if present; else load TS via dynamic transpile of dist path after build.
-// Use tsx if available, else build and import dist.
 async function loadNameSystems() {
   const distJs = join(ROOT, "dist/engine/src/nameSystems.js");
-  const gematriaDist = join(ROOT, "dist/engine/src/gematria.js");
   if (existsSync(distJs)) {
     return import(pathToFileURL(distJs).href);
   }
-  // Try tsx register
-  try {
-    require("tsx/cjs");
-    return import(pathToFileURL(nameModPath).href);
-  } catch {
-    /* fall through */
-  }
-  // Build with tsc override noEmit
-  const { execSync } = await import("node:child_process");
-  execSync("pnpm exec tsc --noEmit false --outDir dist", {
-    cwd: ROOT,
-    stdio: "inherit",
-  });
-  if (!existsSync(distJs) && existsSync(gematriaDist)) {
-    // older layout: name via gematria re-export — still need nameSystems.js after rebuild
-  }
+  execSync("pnpm exec tsc --noEmit false --outDir dist", { cwd: ROOT, stdio: "inherit" });
   assert(existsSync(distJs), "dist/engine/src/nameSystems.js exists after build");
   return import(pathToFileURL(distJs).href);
 }
@@ -247,15 +146,11 @@ assert(py.total === profile.systems.pythagorean.total, "pythagorean total consis
 const systemsList = nameApi.listLetterSystems();
 assert(Array.isArray(systemsList) && systemsList.length === 5, "listLetterSystems returns 5");
 
-// ── 4) Drive real chart calculate (shipped engine) ──────────────────
+// ── 4) Drive real chart calculate (shipped engine) ────────────────
 async function loadCalculate() {
   const distJs = join(ROOT, "dist/engine/src/calculate.js");
   if (!existsSync(distJs)) {
-    const { execSync } = await import("node:child_process");
-    execSync("pnpm exec tsc --noEmit false --outDir dist", {
-      cwd: ROOT,
-      stdio: "inherit",
-    });
+    execSync("pnpm exec tsc --noEmit false --outDir dist", { cwd: ROOT, stdio: "inherit" });
   }
   assert(existsSync(distJs), "dist/engine/src/calculate.js exists");
   return import(pathToFileURL(distJs).href);
@@ -314,6 +209,85 @@ assert(
   `ephemeris.backend is swiss for swiss mode (got ${snapshot.ephemeris?.backend})`
 );
 
+// Astronomical sanity: mid-June 1990 Sun is in tropical Gemini
+const sun = snapshot.planets.find((p) => p.planet === "Sun");
+assert(!!sun, "Sun present in snapshot");
+assert(
+  sun?.sign === "Gemini",
+  `Sun in Gemini for 1990-06-15 (got ${sun?.sign})`
+);
+
+// ── 4b) Anti-invention checks: every shipped planet/sign/house is internally consistent.
+//       This is the durable purpose of the "no-lies bridge": the engine must never ship
+//       a fabricated, NaN, out-of-range, or self-contradictory placement to a reading.
+const ZODIAC = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+
+function isFiniteNumber(n) {
+  return typeof n === "number" && Number.isFinite(n);
+}
+
+for (const p of snapshot.planets) {
+  assert(typeof p.planet === "string" && p.planet.length > 0, `planet "${p.planet}" has a name`);
+  assert(
+    isFiniteNumber(p.longitude) && p.longitude >= 0 && p.longitude < 360,
+    `${p.planet} longitude in [0,360) (got ${p.longitude})`
+  );
+  assert(isFiniteNumber(p.signDegree), `${p.planet} signDegree is finite (got ${p.signDegree})`);
+  // Sign must match floor(longitude / 30)
+  const expectedSign = ZODIAC[Math.floor(p.longitude / 30) % 12];
+  assert(
+    p.sign === expectedSign,
+    `${p.planet} sign "${p.sign}" matches floor(longitude/30) → ${expectedSign}`
+  );
+  // signDegree must equal longitude mod 30 (within 1e-6 tolerance)
+  const expectedDeg = p.longitude % 30;
+  assert(
+    Math.abs(p.signDegree - expectedDeg) < 1e-6,
+    `${p.planet} signDegree ${p.signDegree} === longitude mod 30 ${expectedDeg}`
+  );
+  assert(
+    typeof p.isRetrograde === "boolean",
+    `${p.planet} isRetrograde is boolean (got ${typeof p.isRetrograde})`
+  );
+}
+
+// Houses: 12 distinct, in [0,360)
+assert(new Set(snapshot.houses.map(h => h.house)).size === 12, "12 distinct house numbers");
+for (const h of snapshot.houses) {
+  assert(
+    isFiniteNumber(h.longitude) && h.longitude >= 0 && h.longitude < 360,
+    `house ${h.house} cusp in [0,360) (got ${h.longitude})`
+  );
+  const expectedSign = ZODIAC[Math.floor(h.longitude / 30) % 12];
+  assert(
+    h.sign === expectedSign,
+    `house ${h.house} sign matches floor(longitude/30)`
+  );
+}
+
+// Aspects only reference planets that actually exist
+const planetNames = new Set(snapshot.planets.map(p => p.planet));
+for (const a of snapshot.aspects) {
+  assert(planetNames.has(a.planet1), `aspect "${a.type}" planet1 "${a.planet1}" is a real planet`);
+  assert(planetNames.has(a.planet2), `aspect "${a.type}" planet2 "${a.planet2}" is a real planet`);
+  assert(isFiniteNumber(a.orb) && a.orb >= 0, `aspect ${a.planet1}-${a.planet2} orb is non-negative finite`);
+  assert(isFiniteNumber(a.angle) && a.angle >= 0 && a.angle <= 180, `aspect ${a.planet1}-${a.planet2} angle in [0,180]`);
+}
+
+// Patterns only reference planets that actually exist
+for (const pat of snapshot.patterns) {
+  assert(Array.isArray(pat.planets), `pattern ${pat.type} has planets array`);
+  for (const name of pat.planets || []) {
+    assert(planetNames.has(name), `pattern ${pat.type} references real planet "${name}"`);
+  }
+  if (pat.strength !== undefined) {
+    assert(
+      isFiniteNumber(pat.strength) && pat.strength >= 0 && pat.strength <= 100,
+      `pattern ${pat.type} strength in [0,100] (got ${pat.strength})`
+    );
+  }
+}
+
 // Moshier same shape
 const snapM = await calcApi.calculateFullChart({
   fullName: "Jane Example",
@@ -335,7 +309,7 @@ assert(Array.isArray(snapM.houses) && snapM.houses.length === 12, "moshier 12 ho
 assert(Array.isArray(snapM.aspects), "moshier aspects array");
 assert(Array.isArray(snapM.patterns), "moshier patterns array");
 
-// ── Summary ────────────────────────────────────────────────────────
+// ── Summary ───────────────────────────────────────────────────────
 if (failed > 0) {
   console.error(`\n${failed} assertion(s) failed`);
   process.exit(1);

@@ -11,6 +11,8 @@ interface Suggestion {
   mainText: string;
   secondaryText: string;
   description: string;
+  latitude: number;
+  longitude: number;
 }
 
 interface ResolvedPlace {
@@ -92,24 +94,35 @@ export default function BirthForm({ onResult, onLoadingChange }: Props) {
   function selectSuggestion(s: Suggestion) {
     setShowSuggestions(false);
     setPlaceQuery(s.description);
-    resolvePlace(s.description);
+    resolvePlace(s);
   }
 
-  async function resolvePlace(query: string) {
+  // Resolve by the coordinates already returned with the suggestion (no text re-search).
+  // Fetches only the timezone for those coords — instant, offline, never fails.
+  async function resolvePlace(s: Suggestion) {
     setSearching(true);
     setError(null);
     try {
-      const res = await fetch(`/api/places/resolve?q=${encodeURIComponent(query)}`);
+      const res = await fetch(
+        `/api/places/timezone?lat=${s.latitude}&lon=${s.longitude}`
+      );
       const data = await res.json();
-      if (data.ok && data.place) {
-        const p = data.place as ResolvedPlace;
+      if (data.ok) {
+        const placeLabel = s.mainText + (s.secondaryText ? ", " + s.secondaryText.split(",").pop()?.trim() : "");
+        const p: ResolvedPlace = {
+          place: s.description,
+          latitude: s.latitude,
+          longitude: s.longitude,
+          timezone: data.timezone,
+          utcOffset: data.utcOffset,
+        };
         setResolvedPlace(p);
-        set("birthPlaceLabel", p.place.split(",")[0] + ", " + (p.place.split(",").pop()?.trim() || ""));
+        set("birthPlaceLabel", placeLabel);
         set("latitude", p.latitude);
         set("longitude", p.longitude);
         set("utcOffset", p.utcOffset);
       } else {
-        setError("Couldn't find that place. Try a different spelling.");
+        setError("Couldn't resolve the timezone for that place.");
       }
     } catch {
       setError("Couldn't look up that place. Check your connection.");

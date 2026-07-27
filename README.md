@@ -63,7 +63,7 @@ nataltruth-final/
 | 10 | `GET /v1/name/systems` | System metadata |
 | 11 | `POST /v1/gematria` | Alias to full name profile |
 | 12 | `GET /health` | Service + capability inventory |
-| — | `POST /v1/chat` | (planned) grounded coaching |
+| — | `POST /v1/chat` | Grounded coaching (503 until `OPENROUTER_API_KEY` is set) |
 
 Full request/response shapes: **[docs/API.md](./docs/API.md)**.
 
@@ -78,10 +78,44 @@ Every chart response always includes: planetary positions · 12 house cusps · a
 | Calculation engine (chart + patterns) | **Validated** — Swiss + Moshier |
 | Name systems (5 traditions) | **Validated** |
 | Express API (13 endpoints) | **Validated** — stress-tested 10× each |
-| Truth-layer verification script | **Passing** |
-| Fresh product frontend (`web/`) | **In progress** — scaffolded, brand tokens set |
-| Hosting (on-server container) | **Planned** — container exists, awaiting deploy |
-| Plans / payments / auth | **Not built** — free-value-first for now |
+| Truth-layer verification script (`pnpm verify:full`) | **Passing** — now includes anti-invention checks (every sign matches `floor(longitude/30)`, every aspect/pattern references a real planet) |
+| Product frontend (`web/`) | **Live** — landing, reading, compatibility grid, blog, saved charts, settings, admin CMS |
+| Auth + saved charts | **Live** — bcrypt + JWT cookie, SQLite persistence |
+| Chat (`/v1/chat`) | **Built, dormant** — Z.AI GLM-5.2 (default) with astrology-only guardrail; 503 until `ZAI_API_KEY` is set in the container |
+| Hosting | **Live** — `https://nataltruth.com/` + `https://nataltruth.135.181.44.161.sslip.io/` (SPA + same-origin API), `https://api.nataltruth.com/` (API only) |
+| Plans / payments | **Not built** — free-value-first for now |
+
+## Use the app
+
+- **The product (the 12 pages):** <https://nataltruth.com> or <https://nataltruth.135.181.44.161.sslip.io>
+- **The API only:** <https://api.nataltruth.com/health>
+- The SPA talks **same-origin** to `/v1/*` and `/api/*`; no CORS, no key required for free use.
+
+```bash
+# Quick smoke (no key needed):
+curl -s https://nataltruth.com/api/posts | jq '.posts | length'
+curl -s -X POST https://nataltruth.com/v1/name/pythagorean \
+  -H 'content-type: application/json' \
+  -d '{"fullName":"Jane Example"}' | jq '.result'
+```
+
+## Capacity (free at this scale)
+
+At **~100 clients/month** every layer is free:
+
+- **Calculation engine** — runs in-container. A full chart costs ~40 ms. 100 users × 5 charts = 500 calcs/month, negligible.
+- **SQLite** — in-container. Handles thousands of reads/writes per second; no DB bill.
+- **Geocoding (OpenStreetMap Nominatim)** — free, 1 req/sec public limit. At 100 users this is never the bottleneck.
+- **Hosting (this server + Caddy + TLS)** — already paid. Caddy auto-renews certs.
+- **The only paid thing: the chat model.** Z.AI GLM-5.2 bills per token. At 100 users × ~10 chat turns × ~2K tokens = ~2M tokens/month — typically well under $5. Disable `/v1/chat` (don't set `ZAI_API_KEY`) and the bill is $0; the rest of the app keeps working.
+
+## Chat model + guardrail
+
+- Default provider: **Z.AI GLM-5.2** (`ZAI_API_KEY`, optional `ZAI_BASE_URL`, `ZAI_MODEL`). OpenRouter remains as a fallback if only `OPENROUTER_API_KEY` is set.
+- The chat endpoint **refuses non-astrology requests** (code, homework, general Q&A, content drafting, translation) at two layers:
+  1. Cheap regex pre-filter (costs zero tokens).
+  2. System prompt that forbids inventing placements and going off-lane.
+- It never fabricates chart data; if birth data is missing it asks for it.
 
 This README will never claim "done" for something that is not done.
 
