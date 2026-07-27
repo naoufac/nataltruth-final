@@ -194,3 +194,59 @@
 @media (prefers-reduced-motion: reduce) {
   *, ::before, ::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+
+/* ═══ Backwards compatibility: map old class names → new design system ═══ */
+/* This lets all existing components work with the new cosmic theme without edits. */
+
+:root {
+  --ink: hsl(var(--foreground));
+  --ink-soft: hsl(var(--muted-foreground));
+  --ink-faint: hsl(var(--muted-foreground) / 0.7);
+  --bg: hsl(var(--background));
+  --bg-elevated: hsl(var(--card));
+  --bg-subtle: hsl(var(--muted));
+  --line: hsl(var(--border));
+  --primary-soft: hsl(var(--primary) / 0.1);
+  --primary-ink: hsl(var(--primary));
+  --trust: hsl(var(--primary));
+  --trust-soft: hsl(var(--primary) / 0.08);
+  --warn: hsl(38 80% 55%);
+  --font-base: 17.5px;
+}
+
+@layer components {
+  .card {
+    background: hsl(var(--card) / 0.7);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid hsl(var(--border) / 0.6);
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+    @apply rounded-2xl;
+    transition: box-shadow 0.3s ease, border-color 0.3s ease;
+  }
+  .card:hover {
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+    border-color: hsl(var(--primary) / 0.3);
+  }
+  .btn-primary {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    box-shadow: 0 4px 20px hsl(var(--primary) / 0.25);
+    @apply inline-flex items-center justify-center gap-2 rounded-xl px-6 py-3 font-medium transition;
+  }
+  .btn-primary:hover {
+    background: hsl(var(--primary) / 0.9);
+    box-shadow: 0 6px 28px hsl(var(--primary) / 0.4);
+    transform: translateY(-2px);
+    text-decoration: none;
+  }
+  .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+  .btn-ghost {
+    color: hsl(var(--muted-foreground));
+    @apply inline-flex items-center gap-2 rounded-xl px-4 py-2 transition;
+  }
+  .btn-ghost:hover { color: hsl(var(--foreground)); background: hsl(var(--muted)); text-decoration: none; }
+
+  /* Deep reading (also under new name) */
+  .deep-reading-content { @apply deep-reading; }
+}
