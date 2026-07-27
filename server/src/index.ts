@@ -351,16 +351,18 @@ app.delete("/v1/chat/session/:id", (req, res) => {
 // ── Entitlements (plan lookup for frontend feature gating) ──────────
 app.get("/v1/entitlements", (req, res) => {
   const email = (req.query.email as string || "").trim().toLowerCase();
-  const isAdmin = email && process.env.ADMIN_EMAIL && email === process.env.ADMIN_EMAIL.trim().toLowerCase();
+  const founderEmails = (process.env.FOUNDER_EMAILS || process.env.ADMIN_EMAIL || "")
+    .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
+  const isFounder = founderEmails.includes(email);
   res.json({
     ok: true,
     entitlement: {
       email: email || "anonymous",
-      plan: isAdmin ? "ultra" : "free",
+      plan: isFounder ? "ultra" : "free",
       engineDefault: "swiss",
       features: {
         chat: true,
-        deepReading: isAdmin,
+        deepReading: isFounder,
         moshierEngine: true,
         swissEngine: true,
       },
