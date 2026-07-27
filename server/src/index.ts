@@ -22,8 +22,9 @@ import {
   listLetterSystems,
   type LetterSystemId,
 } from "../../engine/src/nameSystems.js";
-import { db } from "./db.js";
-import { attachUser } from "./auth.js";
+import { db, newId, nowIso } from "./db.js";
+import { attachUser, type AuthUser } from "./auth.js";
+import type { Request as ExpressRequest } from "express";
 import { authRouter } from "./routes/auth.js";
 import { chartsRouter } from "./routes/charts.js";
 import { blogRouter, adminRouter } from "./routes/blog.js";
@@ -263,22 +264,102 @@ const ChatBody = z.object({
   context: z.string().nullable().optional(),
 });
 
+function buildChartContext(userId: string): string | null {
+  const row = db
+    .prepare(
+      "SELECT name, input_json, snapshot_json FROM charts WHERE user_id = ? ORDER BY created_at DESC LIMIT 1"
+    )
+    .get(userId) as
+    | { name: string; input_json: string; snapshot_json: string }
+    | undefined;
+  if (!row) return null;
+
+  let snap: any;
+  let input: any;
+  try {
+    snap = JSON.parse(row.snapshot_json);
+    input = JSON.parse(row.input_json);
+  } catch {
+    return null;
+  }
+
+  const lines: string[] = [];
+  lines.push(`The user's saved birth chart ("${row.name}"):`);
+
+  if (input?.fullName) lines.push(`- Name: ${input.fullName}`);
+  if (input?.birthDate) lines.push(`- Birth date: ${input.birthDate}`);
+  if (input?.birthTimeLocal || input?.birthTime)
+    lines.push(`- Birth time: ${input.birthTimeLocal || input.birthTime}`);
+  if (input?.birthPlaceLabel) lines.push(`- Birth place: ${input.birthPlaceLabel}`);
+
+  const planets: any[] = snap.planets || [];
+  const planetSign = (name: string) => planets.find((p) => p.planet === name)?.sign;
+  const sun = planetSign("Sun");
+  const moon = planetSign("Moon");
+
+  const houses: any[] = snap.houses || [];
+  const rising = houses.find((h: any) => h.house === 1)?.sign;
+
+  if (sun) lines.push(`- Sun sign: ${sun}`);
+  if (moon) lines.push(`- Moon sign: ${moon}`);
+  if (rising) lines.push(`- Rising / Ascendant: ${rising}`);
+
+  const keyPlanets = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+  const planetLines: string[] = [];
+  for (const name of keyPlanets) {
+    const p = planets.find((x: any) => x.planet === name);
+    if (p?.sign) {
+      const house = p.house ? `, House ${p.house}` : "";
+      const retro = p.isRetrograde ? " (Rx)" : "";
+      planetLines.push(`- ${name}: ${p.sign}${house}${retro}`);
+    }
+  }
+  if (planetLines.length) {
+    lines.push("Key planets:", ...planetLines);
+  }
+
+  return lines.length > 1 ? lines.join("\n") : null;
+}
+
 app.post("/v1/chat", async (req, res) => {
   try {
     const body = ChatBody.parse(req.body);
+    const user = (req as ExpressRequest & { user?: AuthUser }).user;
+    const userId = user?.id;
+    const sid = body.session_id || newId("s");
+
+    let context = body.context?.trim() || "";
+    let history: { role: string; content: string }[] | undefined;
+
+    if (userId) {
+      const histRows = db
+        .prepare(
+          "SELECT role, content FROM chat_messages WHERE session_id = ? AND user_id = ? ORDER BY timestamp ASC LIMIT 50"
+        )
+        .all(sid, userId) as { role: string; content: string }[];
+      history = histRows.map((r) => ({ role: r.role, content: r.content }));
+
+      const chartCtx = buildChartContext(userId);
+      if (chartCtx) {
+        context = context ? `${chartCtx}\n\n${context}` : chartCtx;
+      }
+
+      db.prepare(
+        "INSERT INTO chat_messages(id, user_id, session_id, role, content, timestamp) VALUES(?,?,?,?,?,?)"
+      ).run(newId("msg"), userId, sid, "user", body.message, nowIso());
+    }
+
     const { response, model } = await chatCompletion({
       message: body.message,
-      context: body.context,
+      history,
+      context: context || undefined,
     });
 
-    // Store in session if session_id provided
-    const sid = body.session_id || `s_${Date.now()}`;
-    if (!chatSessions.has(sid)) {
-      chatSessions.set(sid, { id: sid, messages: [], createdAt: new Date().toISOString() });
+    if (userId) {
+      db.prepare(
+        "INSERT INTO chat_messages(id, user_id, session_id, role, content, timestamp) VALUES(?,?,?,?,?,?)"
+      ).run(newId("msg"), userId, sid, "assistant", response, nowIso());
     }
-    const session = chatSessions.get(sid)!;
-    session.messages.push({ role: "user", content: body.message, ts: new Date().toISOString() });
-    session.messages.push({ role: "assistant", content: response, ts: new Date().toISOString() });
 
     res.json({ ok: true, response, model, session_id: sid });
   } catch (err) {
@@ -318,33 +399,65 @@ app.post("/v1/reading/deep", async (req, res) => {
   }
 });
 
-// ── Chat session management (in-memory; no persistence needed for v1) ──
-const chatSessions = new Map<string, { id: string; messages: { role: string; content: string; ts: string }[]; createdAt: string }>();
-
-app.get("/v1/chat/sessions", (_req, res) => {
-  const sessions = Array.from(chatSessions.values()).map(s => ({
-    id: s.id,
-    messageCount: s.messages.length,
-    createdAt: s.createdAt,
-  }));
-  res.json({ ok: true, sessions });
+// ── Chat session management (SQLite-backed) ─────────────────────────
+app.get("/v1/chat/sessions", (req, res) => {
+  const user = (req as ExpressRequest & { user?: AuthUser }).user;
+  const userId = user?.id;
+  if (!userId) {
+    res.json({ ok: true, sessions: [] });
+    return;
+  }
+  const rows = db
+    .prepare(
+      "SELECT session_id, COUNT(*) AS message_count, MAX(timestamp) AS last_message_time FROM chat_messages WHERE user_id = ? GROUP BY session_id ORDER BY last_message_time DESC LIMIT 20"
+    )
+    .all(userId) as {
+    session_id: string;
+    message_count: number;
+    last_message_time: string;
+  }[];
+  res.json({
+    ok: true,
+    sessions: rows.map((r) => ({
+      id: r.session_id,
+      messageCount: r.message_count,
+      lastMessageTime: r.last_message_time,
+    })),
+  });
 });
 
 app.get("/v1/chat/history/:id", (req, res) => {
-  const session = chatSessions.get(req.params.id);
-  if (!session) {
-    res.status(404).json({ ok: false, error: "Session not found." });
+  const user = (req as ExpressRequest & { user?: AuthUser }).user;
+  const userId = user?.id;
+  if (!userId) {
+    res.status(401).json({ ok: false, error: "Sign in required." });
     return;
   }
-  res.json({ ok: true, messages: session.messages });
+  const rows = db
+    .prepare(
+      "SELECT role, content, timestamp FROM chat_messages WHERE session_id = ? AND user_id = ? ORDER BY timestamp ASC LIMIT 100"
+    )
+    .all(req.params.id, userId) as { role: string; content: string; timestamp: string }[];
+  res.json({
+    ok: true,
+    messages: rows.map((r) => ({ role: r.role, content: r.content, ts: r.timestamp })),
+  });
 });
 
 app.delete("/v1/chat/session/:id", (req, res) => {
-  if (!chatSessions.has(req.params.id)) {
+  const user = (req as ExpressRequest & { user?: AuthUser }).user;
+  const userId = user?.id;
+  if (!userId) {
+    res.status(401).json({ ok: false, error: "Sign in required." });
+    return;
+  }
+  const info = db
+    .prepare("DELETE FROM chat_messages WHERE session_id = ? AND user_id = ?")
+    .run(req.params.id, userId);
+  if (info.changes === 0) {
     res.status(404).json({ ok: false, error: "Session not found." });
     return;
   }
-  chatSessions.delete(req.params.id);
   res.json({ ok: true });
 });
 
@@ -392,7 +505,8 @@ app.get("/admin/stats", attachUser, (req, res) => {
   const users = db.prepare("SELECT id, email, name, role, created_at FROM users").all() as any[];
   const founderEmails = (process.env.FOUNDER_EMAILS || process.env.ADMIN_EMAIL || "")
     .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
-  const chatMsgCount = Array.from(chatSessions.values()).reduce((sum, s) => sum + s.messages.length, 0);
+  const chatMsgCount = (db.prepare("SELECT COUNT(*) AS n FROM chat_messages").get() as { n: number }).n;
+  const chatSessionCount = (db.prepare("SELECT COUNT(DISTINCT session_id) AS n FROM chat_messages").get() as { n: number }).n;
 
   const subscriptionBreakdown: Record<string, number> = { seeker: 0, enthusiast: 0, advanced: 0, professional: 0 };
   for (const u of users) {
@@ -415,7 +529,7 @@ app.get("/admin/stats", attachUser, (req, res) => {
   res.json({
     total_users: users.length,
     total_chat_messages: chatMsgCount,
-    total_chat_sessions: chatSessions.size,
+    total_chat_sessions: chatSessionCount,
     total_compatibility_reports: 0,
     recent_signups: 0,
     subscription_breakdown: subscriptionBreakdown,

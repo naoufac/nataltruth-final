@@ -53,6 +53,17 @@ CREATE TABLE IF NOT EXISTS settings (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  session_id TEXT NOT NULL,
+  role       TEXT NOT NULL,
+  content    TEXT NOT NULL,
+  timestamp  TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_chat_user_session ON chat_messages(user_id, session_id);
+CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_messages(session_id);
 `);
 
 // Migration: add category column to posts if missing (for existing DBs)
