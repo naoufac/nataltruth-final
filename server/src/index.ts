@@ -205,6 +205,73 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// ── Pricing ────────────────────────────────────────────────────────
+app.get("/pricing", (_req, res) => {
+  res.json({
+    plans: [
+      {
+        id: "seeker",
+        name: "Free",
+        price: 0,
+        period: null,
+        tagline: "All calculations, no AI",
+        features: [
+          "Full natal chart (Swiss Ephemeris)",
+          "5-tradition name numerology",
+          "2 free deep readings",
+          "Daily horoscope per sign",
+          "Compatibility matrix",
+          "Blog + educational content",
+        ],
+      },
+      {
+        id: "enthusiast",
+        name: "Enthusiast",
+        price: 29,
+        period: "/month",
+        tagline: "AI Coach + daily guidance",
+        features: [
+          "Everything in Free",
+          "AI Coach (50 messages/day)",
+          "AI Friend (50 messages/day)",
+          "Daily personalized guidance",
+          "Transit forecasts",
+          "Deep readings (max 2000 words)",
+        ],
+      },
+      {
+        id: "advanced",
+        name: "Advanced",
+        price: 79,
+        period: "/month",
+        tagline: "Unlimited AI + deeper reports",
+        popular: true,
+        features: [
+          "Everything in Enthusiast",
+          "Unlimited AI Coach + Friend",
+          "Deep readings (max 3000 words)",
+          "Priority generation queue",
+          "Advanced pattern analysis",
+        ],
+      },
+      {
+        id: "professional",
+        name: "Professional",
+        price: 199,
+        period: "/month",
+        tagline: "Swiss-only, full precision, for coaches",
+        features: [
+          "Everything in Advanced",
+          "Swiss-only calculations",
+          "Deep readings (4000+ words)",
+          "Watermark-free sharing",
+          "API access",
+        ],
+      },
+    ],
+  });
+});
+
 // ── Chart ──────────────────────────────────────────────────────────
 
 app.post("/calculate", async (req, res) => {
