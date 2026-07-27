@@ -150,16 +150,21 @@ export async function chatCompletion(opts: {
   message: string;
   history?: { role: string; content: string }[];
   context?: string | null;
+  internal?: boolean;
 }): Promise<{ response: string; model: string }> {
   const message = opts.message?.trim();
   if (!message) throw new Error("message is required");
 
-  const offLane = isOffLane(message);
-  if (offLane.refused) {
-    return { response: offLane.reason!, model: "guardrail" };
+  if (!opts.internal) {
+    const offLane = isOffLane(message);
+    if (offLane.refused) {
+      return { response: offLane.reason!, model: "guardrail" };
+    }
   }
 
-  const messages = buildMessages(opts);
+  const messages = opts.internal
+    ? [{ role: "system", content: "You are NatalTruth's internal astrology generator. Follow instructions precisely." }, { role: "user", content: message }]
+    : buildMessages(opts);
   return callWithCascade(messages);
 }
 

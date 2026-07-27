@@ -12,6 +12,7 @@ import cookieParser from "cookie-parser";
 import { z } from "zod";
 import { calculateFullChart } from "../../engine/src/calculate.js";
 import type { EngineMode } from "../../engine/src/calculate.js";
+import { calculateBirthChart } from "../../engine/src/ephemeris.js";
 import {
   calculateFullNameProfile,
   calculatePythagorean,
@@ -483,7 +484,167 @@ app.get("/v1/entitlements", (req, res) => {
   });
 });
 
-// ── Admin endpoints (called by Gab44-V2 AdminPage) ──────────────────
+// ── Transits: current planet positions vs natal chart ──────────────
+const TRANSIT_PLANETS = ["Jupiter", "Saturn", "Uranus", "Neptune", "Pluto"];
+const ASPECT_ANGLES: Record<string, number> = {
+  conjunction: 0, sextile: 60, square: 90, trine: 120, opposition: 180,
+};
+const TRANSIT_ORB = 3;
+
+app.get("/v1/transits", async (req, res) => {
+  try {
+    const user = (req as ExpressRequest & { user?: AuthUser }).user;
+    const userId = user?.id;
+    if (!userId) { res.status(401).json({ ok: false, error: "Sign in required." }); return; }
+
+    const chartRow = db
+      .prepare("SELECT snapshot_json FROM charts WHERE user_id = ? ORDER BY created_at DESC LIMIT 1")
+      .get(userId) as { snapshot_json: string } | undefined;
+    if (!chartRow) { res.status(404).json({ ok: false, error: "No saved chart found." }); return; }
+
+    const natal = JSON.parse(chartRow.snapshot_json);
+    const natalPlanets: any[] = natal.planets || [];
+
+    const now = new Date();
+    const currentChart = await calculateBirthChart(now, 0, 0, "E", "swiss");
+    const currentPlanets = currentChart.planets;
+
+    const transits: any[] = [];
+    for (const tp of currentPlanets) {
+      if (!TRANSIT_PLANETS.includes(tp.planet)) continue;
+      for (const np of natalPlanets) {
+        let diff = Math.abs(tp.longitude - np.longitude);
+        if (diff > 180) diff = 360 - diff;
+        for (const [aspectName, angle] of Object.entries(ASPECT_ANGLES)) {
+          const orb = Math.abs(diff - angle);
+          if (orb <= TRANSIT_ORB) {
+            transits.push({
+              id: `${tp.planet}-${np.planet}-${aspectName}`,
+              transit_type: `${tp.planet} ${aspectName} ${np.planet}`,
+              planet: tp.planet,
+              aspect: aspectName,
+              natal_planet: np.planet,
+              transit_sign: tp.sign,
+              orb: Math.round(orb * 100) / 100,
+              strength: Math.round((1 - orb / TRANSIT_ORB) * 100) / 100,
+              peak_date: now.toISOString().slice(0, 10),
+              interpretation: `${tp.planet} transiting ${tp.sign} forms a ${aspectName} to your natal ${np.planet} in ${np.sign}. This ${aspectName === "trine" || aspectName === "sextile" ? "harmonious" : aspectName === "square" || aspectName === "opposition" ? "challenging" : "powerful"} aspect ${aspectName === "trine" ? "brings natural flow and opportunity" : aspectName === "square" ? "creates productive friction for growth" : aspectName === "opposition" ? "demands balance between two forces" : aspectName === "sextile" ? "offers an opportunity if you act" : "concentrates energy intensely"} in the area of life ruled by ${np.planet}.`,
+            });
+          }
+        }
+      }
+    }
+
+    transits.sort((a, b) => b.strength - a.strength);
+    res.json({ ok: true, transits: transits.slice(0, 6), date: now.toISOString().slice(0, 10) });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Transit calculation failed";
+    res.status(500).json({ ok: false, error: msg });
+  }
+});
+
+// ── Daily guidance: GLM-5.2 reading from chart + transits ──────────
+app.get("/v1/guidance/daily", async (req, res) => {
+  try {
+    const user = (req as ExpressRequest & { user?: AuthUser }).user;
+    const userId = user?.id;
+    if (!userId) { res.status(401).json({ ok: false, error: "Sign in required." }); return; }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const cached = db.prepare("SELECT content_json FROM daily_guidance WHERE user_id = ? AND date = ?").get(userId, today) as { content_json: string } | undefined;
+    if (cached) {
+      res.json({ ok: true, ...JSON.parse(cached.content_json), date: today });
+      return;
+    }
+
+    const chartRow = db
+      .prepare("SELECT snapshot_json FROM charts WHERE user_id = ? ORDER BY created_at DESC LIMIT 1")
+      .get(userId) as { snapshot_json: string } | undefined;
+
+    let context = "Generate personalized daily astrology guidance.";
+    if (chartRow) {
+      const snap = JSON.parse(chartRow.snapshot_json);
+      const sun = snap.planets?.find((p: any) => p.planet === "Sun");
+      const moon = snap.planets?.find((p: any) => p.planet === "Moon");
+      const rising = snap.houses?.find((h: any) => h.house === 1);
+      context = `User: Sun ${sun?.sign || "?"}, Moon ${moon?.sign || "?"}, Rising ${rising?.sign || "?"}. Generate daily guidance for ${today}.`;
+    }
+
+    const { response } = await chatCompletion({
+      message: `${context}\n\nProvide today's guidance as a JSON object with: overall_energy (1-2 sentences), focus_areas (3 items), action_items (3 items). Respond ONLY with valid JSON.`,
+      internal: true,
+    });
+
+    let guidance: any;
+    try {
+      const match = response.match(/\{[\s\S]*\}/);
+      guidance = match ? JSON.parse(match[0]) : { overall_energy: response, focus_areas: [], action_items: [] };
+    } catch {
+      guidance = { overall_energy: response, focus_areas: [], action_items: [] };
+    }
+
+    db.prepare("INSERT OR REPLACE INTO daily_guidance(user_id, date, content_json) VALUES(?,?,?)")
+      .run(userId, today, JSON.stringify(guidance));
+
+    res.json({ ok: true, ...guidance, date: today });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Daily guidance failed";
+    res.status(500).json({ ok: false, error: msg });
+  }
+});
+
+// ── Daily horoscope: per-sign GLM-5.2 content ──────────────────────
+const ZODIAC_SIGNS_LIST = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
+
+app.get("/v1/horoscope/:sign", async (req, res) => {
+  try {
+    const sign = ZODIAC_SIGNS_LIST.find(s => s.toLowerCase() === req.params.sign.toLowerCase());
+    if (!sign) { res.status(400).json({ ok: false, error: "Invalid zodiac sign." }); return; }
+
+    const today = new Date().toISOString().slice(0, 10);
+    const cached = db.prepare("SELECT content_json FROM daily_horoscopes WHERE sign = ? AND date = ?").get(sign, today) as { content_json: string } | undefined;
+    if (cached) {
+      res.json({ ok: true, ...JSON.parse(cached.content_json), sign, date: today });
+      return;
+    }
+
+    const { response } = await chatCompletion({
+      message: `Generate today's (${today}) horoscope for ${sign}. Return ONLY valid JSON: { "summary": "2-3 sentences", "love": "1 sentence", "career": "1 sentence", "wellness": "1 sentence", "lucky_number": <1-9>, "mood": "one word" }`,
+      internal: true,
+    });
+
+    let horo: any;
+    try {
+      const match = response.match(/\{[\s\S]*\}/);
+      horo = match ? JSON.parse(match[0]) : { summary: response };
+    } catch {
+      horo = { summary: response };
+    }
+
+    db.prepare("INSERT OR REPLACE INTO daily_horoscopes(sign, date, content_json) VALUES(?,?,?)")
+      .run(sign, today, JSON.stringify(horo));
+
+    res.json({ ok: true, ...horo, sign, date: today });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : "Horoscope failed";
+    res.status(500).json({ ok: false, error: msg });
+  }
+});
+
+app.get("/v1/horoscope", async (_req, res) => {
+  const today = new Date().toISOString().slice(0, 10);
+  const signs = ZODIAC_SIGNS_LIST;
+  const results: any[] = [];
+  for (const sign of signs) {
+    const cached = db.prepare("SELECT content_json FROM daily_horoscopes WHERE sign = ? AND date = ?").get(sign, today) as { content_json: string } | undefined;
+    if (cached) {
+      results.push({ ...JSON.parse(cached.content_json), sign });
+    }
+  }
+  res.json({ ok: true, date: today, signs: results });
+});
+
+
 // The frontend calls /admin/* with Authorization: Bearer <token>.
 // Auth is via our JWT cookie OR the bearer token.
 

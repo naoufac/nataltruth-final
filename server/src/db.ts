@@ -64,6 +64,20 @@ CREATE TABLE IF NOT EXISTS chat_messages (
 );
 CREATE INDEX IF NOT EXISTS idx_chat_user_session ON chat_messages(user_id, session_id);
 CREATE INDEX IF NOT EXISTS idx_chat_session ON chat_messages(session_id);
+
+CREATE TABLE IF NOT EXISTS daily_guidance (
+  user_id  TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  date     TEXT NOT NULL,
+  content_json TEXT NOT NULL,
+  PRIMARY KEY (user_id, date)
+);
+
+CREATE TABLE IF NOT EXISTS daily_horoscopes (
+  sign     TEXT NOT NULL,
+  date     TEXT NOT NULL,
+  content_json TEXT NOT NULL,
+  PRIMARY KEY (sign, date)
+);
 `);
 
 // Migration: add category column to posts if missing (for existing DBs)
