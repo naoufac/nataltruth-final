@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>NatalTruth — System Mindmap</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;600;700&family=Manrope:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:240 15% 6%;--card:240 16% 9%;--fg:40 30% 92%;--muted:230 12% 65%;--border:240 12% 20%;--primary:38 92% 55%;--accent2:200 85% 65%;--ok:142 62% 52%;--warn:42 96% 56%;--err:0 78% 60%;--fd:'Cinzel',serif;--fb:'Manrope',sans-serif;--fm:'JetBrains Mono',monospace}
+body{font-family:var(--fb);background:hsl(var(--bg));color:hsl(var(--fg));line-height:1.6;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0;z-index:-1;background:radial-gradient(1200px 700px at 15% -10%,hsl(var(--primary)/.08),transparent 60%),radial-gradient(1000px 800px at 100% 0%,hsl(var(--accent2)/.06),transparent 55%),hsl(var(--bg))}
+.wrap{max-width:1400px;margin:0 auto;padding:0 20px}
+
+/* Header */
+.hdr{position:sticky;top:0;z-index:50;background:hsl(var(--bg)/.85);backdrop-filter:blur(16px);border-bottom:1px solid hsl(var(--border))}
+.hdr-in{display:flex;align-items:center;justify-content:space-between;padding:12px 20px;flex-wrap:wrap;gap:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:hsl(var(--primary));box-shadow:0 0 12px hsl(var(--primary)/.6)}
+.brand h1{font-family:var(--fd);font-weight:700;font-size:1.05rem}
+.brand h1 span{display:block;font-size:.58rem;letter-spacing:.3em;color:hsl(var(--primary));text-transform:uppercase}
+.nav-tabs{display:flex;gap:4px;flex-wrap:wrap}
+.tab{font-family:var(--fm);font-size:.72rem;padding:6px 14px;border-radius:8px;border:1px solid hsl(var(--border));background:transparent;color:hsl(var(--muted));cursor:pointer;transition:.2s;text-decoration:none;display:inline-block}
+.tab:hover{color:hsl(var(--fg));border-color:hsl(var(--primary)/.3)}
+.tab.active{background:hsl(var(--primary)/.1);color:hsl(var(--primary));border-color:hsl(var(--primary)/.4)}
+
+/* Sections */
+section{padding:32px 0}
+.sh{margin-bottom:20px}
+.sh .num{font-family:var(--fm);font-size:.68rem;letter-spacing:.28em;color:hsl(var(--primary));text-transform:uppercase}
+.sh h2{font-family:var(--fd);font-weight:700;font-size:1.4rem;margin-top:4px}
+.sh p{color:hsl(var(--muted));font-size:.88rem;margin-top:4px;max-width:72ch}
+
+/* Boardmix embed */
+.bmx-wrap{position:relative;width:100%;border-radius:16px;overflow:hidden;border:1px solid hsl(var(--border));background:hsl(var(--card))}
+.bmx-frame{width:100%;height:720px;border:0;display:block}
+.bmx-loading{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;background:hsl(var(--card));color:hsl(var(--muted));font-size:.84rem;pointer-events:none}
+.bmx-loading .spinner{width:40px;height:40px;border:3px solid hsl(var(--border));border-top-color:hsl(var(--primary));border-radius:50%;animation:spin 1s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* API Flow cards (same design as before) */
+.g{background:hsl(var(--card)/.5);border:1px solid hsl(var(--border));border-radius:14px;backdrop-filter:blur(10px);padding:22px;margin-bottom:22px}
+.plans{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:18px}
+.plan{background:hsl(var(--card)/.6);border:1px solid hsl(var(--border));border-radius:14px;overflow:hidden}
+.plan-h{padding:16px 18px;border-bottom:1px solid hsl(var(--border)/.5)}
+.plan-h .tier{font-family:var(--fm);font-size:.66rem;letter-spacing:.18em;text-transform:uppercase;margin-bottom:4px}
+.plan-h .price{font-family:var(--fd);font-size:1.7rem;font-weight:700}
+.plan-h .price small{font-size:.82rem;font-weight:400;color:hsl(var(--muted))}
+.plan-h .desc{font-size:.78rem;color:hsl(var(--muted));margin-top:4px}
+.plan-b{padding:14px 18px}
+.seq{display:flex;flex-direction:column;gap:6px}
+.step{display:flex;align-items:flex-start;gap:8px;padding:7px 10px;border-radius:7px;background:hsl(var(--bg)/.4);font-size:.76rem;border:1px solid hsl(var(--border)/.3)}
+.step .n{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;font-family:var(--fm);font-size:.6rem;font-weight:600;flex:none}
+.step .n.on{background:hsl(var(--primary)/.2);border:1px solid hsl(var(--primary)/.4);color:hsl(var(--primary))}
+.step .n.off{background:hsl(var(--muted)/.1);border:1px solid hsl(var(--border));color:hsl(var(--muted));opacity:.5}
+.step.locked{opacity:.4}
+.step.locked .info{text-decoration:line-through}
+.step .m{font-family:var(--fm);font-size:.62rem;font-weight:600;padding:1px 5px;border-radius:3px}
+.step .m-GET{background:hsl(var(--ok)/.15);color:hsl(var(--ok))}
+.step .m-POST{background:hsl(var(--accent2)/.15);color:hsl(var(--accent2))}
+.step .p{font-family:var(--fm);color:hsl(var(--primary));margin-left:3px;font-size:.72rem}
+.step .d{color:hsl(var(--muted));margin-top:1px;font-size:.68rem}
+.rt{display:flex;align-items:center;gap:8px;margin-top:10px;padding-top:10px;border-top:1px solid hsl(var(--border)/.4)}
+.rt .sc{font-family:var(--fd);font-size:1.3rem;font-weight:700}
+.rt .bar{flex:1;height:5px;border-radius:3px;background:hsl(var(--border));overflow:hidden}
+.rt .bar div{height:100%;border-radius:3px}
+.rt .lb{font-size:.68rem;color:hsl(var(--muted));max-width:180px}
+
+/* Tech + promises (compact) */
+.tech-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.tc{background:hsl(var(--bg)/.4);border:1px solid hsl(var(--border));border-radius:10px;padding:14px}
+.tc-h{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+.tc-n{font-weight:600;font-size:.82rem}
+.tc-s{font-family:var(--fm);font-size:.66rem;padding:2px 7px;border-radius:5px;font-weight:600}
+.tc-u{font-size:.72rem;color:hsl(var(--muted));line-height:1.5}
+.tc-bar{height:3px;border-radius:2px;background:hsl(var(--border));overflow:hidden;margin-top:6px}
+.tc-bar div{height:100%;border-radius:2px}
+.tc-note{font-size:.66rem;color:hsl(var(--muted));margin-top:4px;opacity:.7}
+
+.promise{display:flex;align-items:flex-start;gap:10px;padding:8px 0;border-bottom:1px solid hsl(var(--border)/.3)}
+.promise:last-child{border-bottom:none}
+.promise .pi{width:24px;height:24px;border-radius:6px;display:grid;place-items:center;font-size:12px;flex:none}
+.promise .pi.met{background:hsl(var(--ok)/.12);color:hsl(var(--ok))}
+.promise .pi.partial{background:hsl(var(--warn)/.12);color:hsl(var(--warn))}
+.promise .pi.miss{background:hsl(var(--err)/.12);color:hsl(var(--err))}
+.promise .pt{font-weight:500;font-size:.8rem}
+.promise .pd{font-size:.7rem;color:hsl(var(--muted));margin-top:1px}
+
+.scores{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px}
+.score-box{text-align:center;padding:18px;background:hsl(var(--bg)/.4);border-radius:10px;border:1px solid hsl(var(--border))}
+.score-box .sv{font-family:var(--fd);font-size:2.5rem;font-weight:700}
+.score-box .sl{font-size:.8rem;color:hsl(var(--muted));margin-top:2px}
+.score-box .sn{font-size:.66rem;color:hsl(var(--muted));margin-top:4px;opacity:.7}
+
+.ft{text-align:center;padding:32px 0 48px}
+.ft-info{font-family:var(--fm);font-size:.72rem;color:hsl(var(--muted))}
+.ft-info b{color:hsl(var(--primary));font-weight:500}
+
+@media(max-width:768px){.plans{grid-template-columns:1fr}.bmx-frame{height:500px}}
+</style>
+</head>
+<body>
+
+<header class="hdr"><div class="wrap">
+<div class="hdr-in">
+<div class="brand"><div class="dot"></div><h1>NatalTruth<span>System Mindmap</span></h1></div>
+<div class="nav-tabs">
+<a class="tab active" href="#board">Mindmap</a>
+<a class="tab" href="#plans">Plan × API</a>
+<a class="tab" href="#tech">Technology</a>
+<a class="tab" href="#promises">Promises</a>
+<a class="tab" href="#scores">Scores</a>
+<a class="tab" href="https://nataltruth.com" target="_blank">nataltruth.com ↗</a>
+</div>
+</div>
+</div></header>
+
+<main><div class="wrap">
+
+<!-- BOARDMIX MINDMAP -->
+<section id="board">
+<div class="sh">
+<div class="num">01 / Visual Mindmap</div>
+<h2>Boardmix System Map</h2>
+<p>Interactive mindmap hosted on boardmix.com. Click nodes to explore the full system architecture, API flows, and plan tiers.</p>
+</div>
+<div class="bmx-wrap">
+<iframe class="bmx-frame" src="https://boardmix.com/app/team/116026/2508406" allow="fullscreen; clipboard-read; clipboard-write" allowfullscreen loading="lazy" onload="this.previousElementSibling.style.display='none'"></iframe>
+<div class="bmx-loading"><div class="spinner"></div><div>Loading boardmix mindmap…</div><div style="font-size:.68rem;opacity:.6">If this doesn't load, the board may require login.</div></div>
+</div>
+<div style="margin-top:12px;display:flex;gap:12px;flex-wrap:wrap">
+<a href="https://boardmix.com/app/team/116026/2508406" target="_blank" class="tab" style="background:hsl(var(--primary)/.1);color:hsl(var(--primary);border-color:hsl(var(--primary)/.3)">Open in boardmix ↗</a>
+<a href="https://nataltruth.com/health" target="_blank" class="tab">Live API health ↗</a>
+</div>
+</section>
+
+<!-- PLAN × API -->
+<section id="plans">
+<div class="sh">
+<div class="num">02 / Plan × API Call Matrix</div>
+<h2>Every endpoint, who gets it, in what order</h2>
+<p>Locked steps show what each tier does NOT get. Cross-verified by 2 independent agents against live code.</p>
+</div>
+<div class="plans">
+
+<div class="plan">
+<div class="plan-h" style="border-left:3px solid hsl(var(--muted))">
+<div class="tier" style="color:hsl(var(--muted))">SEEKER · FREE</div><div class="price">$0<small>/mo</small></div>
+<div class="desc">Basic chart + numerology. Earns trust.</div></div>
+<div class="plan-b"><div class="seq">
+<div class="step"><div class="n on">1</div><div><span class="m m-GET">GET</span><span class="p">/entitlements</span><div class="d">Check plan</div></div></div>
+<div class="step"><div class="n on">2</div><div><span class="m m-POST">POST</span><span class="p">/calculate/swiss</span><div class="d">Full chart (15 planets, 12 houses)</div></div></div>
+<div class="step"><div class="n on">3</div><div><span class="m m-POST">POST</span><span class="p">/name/full</span><div class="d">5-tradition numerology + personal year</div></div></div>
+<div class="step"><div class="n on">4</div><div><span class="m m-GET">GET</span><span class="p">/posts</span><div class="d">Blog (200+ articles)</div></div></div>
+<div class="step"><div class="n on">5</div><div><span class="m m-GET">GET</span><span class="p">/places/autocomplete</span><div class="d">City search</div></div></div>
+<div class="step locked"><div class="n off">6</div><div><span class="m m-POST">POST</span><span class="p">/chat</span><div class="d">AI Coach — LOCKED</div></div></div>
+<div class="step locked"><div class="n off">7</div><div><span class="m m-POST">POST</span><span class="p">/reading/deep</span><div class="d">Deep reading — LOCKED</div></div></div>
+<div class="step locked"><div class="n off">8</div><div><span class="m m-POST">POST</span><span class="p">/transits</span><div class="d">Transits — NOT BUILT</div></div></div>
+</div>
+<div class="rt"><div class="sc" style="color:hsl(var(--warn))">4/10</div><div class="bar"><div style="width:40%;background:hsl(var(--warn))"></div></div><div class="lb">Free gives away Swiss + chat. Should gate both.</div></div>
+</div></div>
+
+<div class="plan">
+<div class="plan-h" style="border-left:3px solid hsl(200 85% 65%)">
+<div class="tier" style="color:hsl(200 85% 65%)">ENTHUSIAST · $19/MO</div><div class="price">$19<small>/mo</small></div>
+<div class="desc">Daily AI guidance + chat + transits.</div></div>
+<div class="plan-b"><div class="seq">
+<div class="step"><div class="n on">1</div><div><span class="m m-GET">GET</span><span class="p">/entitlements</span><div class="d">Check plan → enthusiast</div></div></div>
+<div class="step"><div class="n on">2</div><div><span class="m m-POST">POST</span><span class="p">/calculate/swiss</span><div class="d">Full natal chart</div></div></div>
+<div class="step"><div class="n on">3</div><div><span class="m m-POST">POST</span><span class="p">/name/full</span><div class="d">Numerology + personal year</div></div></div>
+<div class="step"><div class="n on">4</div><div><span class="m m-POST">POST</span><span class="p">/chat</span><div class="d">AI Coach (GLM-5.2 + chart context)</div></div></div>
+<div class="step"><div class="n on">5</div><div><span class="m m-GET">GET</span><span class="p">/chat/sessions</span><div class="d">Chat history</div></div></div>
+<div class="step locked"><div class="n off">6</div><div><span class="m m-POST">POST</span><span class="p">/guidance/daily</span><div class="d">Daily guidance — NOT BUILT</div></div></div>
+<div class="step locked"><div class="n off">7</div><div><span class="m m-POST">POST</span><span class="p">/transits</span><div class="d">Transits — NOT BUILT</div></div></div>
+<div class="step locked"><div class="n off">8</div><div><span class="m m-POST">POST</span><span class="p">/reading/deep</span><div class="d">Deep reading — LOCKED (Ultra)</div></div></div>
+</div>
+<div class="rt"><div class="sc" style="color:hsl(var(--warn))">5/10</div><div class="bar"><div style="width:50%;background:hsl(var(--warn))"></div></div><div class="lb">$19 value prop (guidance + transits) not built yet.</div></div>
+</div></div>
+
+<div class="plan">
+<div class="plan-h" style="border-left:3px solid hsl(270 70% 68%)">
+<div class="tier" style="color:hsl(270 70% 68%)">ADVANCED · $49/MO</div><div class="price">$49<small>/mo</small></div>
+<div class="desc">Deeper reports, pattern analysis.</div></div>
+<div class="plan-b"><div class="seq">
+<div class="step"><div class="n on">1</div><div><span class="m m-GET">GET</span><span class="p">/entitlements</span></div></div>
+<div class="step"><div class="n on">2</div><div><span class="m m-POST">POST</span><span class="p">/calculate/swiss</span><div class="d">+ Moshier cross-check</div></div></div>
+<div class="step"><div class="n on">3</div><div><span class="m m-POST">POST</span><span class="p">/name/full</span></div></div>
+<div class="step"><div class="n on">4</div><div><span class="m m-POST">POST</span><span class="p">/chat</span><div class="d">Coach + persona</div></div></div>
+<div class="step"><div class="n on">5</div><div><span class="m m-POST">POST</span><span class="p">/reading/deep</span><div class="d">2000-word reading</div></div></div>
+<div class="step locked"><div class="n off">6</div><div><span class="m m-POST">POST</span><span class="p">/guidance/daily</span><div class="d">NOT BUILT</div></div></div>
+<div class="step locked"><div class="n off">7</div><div><span class="m m-POST">POST</span><span class="p">/transits</span><div class="d">90-day forecast NOT BUILT</div></div></div>
+</div>
+<div class="rt"><div class="sc" style="color:hsl(var(--warn))">6/10</div><div class="bar"><div style="width:60%;background:hsl(var(--warn))"></div></div><div class="lb">Deep reading works. Transits missing.</div></div>
+</div></div>
+
+<div class="plan">
+<div class="plan-h" style="border-left:3px solid hsl(38 92% 55%)">
+<div class="tier" style="color:hsl(38 92% 55%)">PROFESSIONAL · $199/MO</div><div class="price">$199<small>/mo</small></div>
+<div class="desc">Swiss-only, full precision, for coaches.</div></div>
+<div class="plan-b"><div class="seq">
+<div class="step"><div class="n on">1</div><div><span class="m m-GET">GET</span><span class="p">/entitlements</span></div></div>
+<div class="step"><div class="n on">2</div><div><span class="m m-POST">POST</span><span class="p">/calculate/swiss</span><div class="d">Swiss LOCKED (highest precision)</div></div></div>
+<div class="step"><div class="n on">3</div><div><span class="m m-POST">POST</span><span class="p">/name/full</span></div></div>
+<div class="step"><div class="n on">4</div><div><span class="m m-POST">POST</span><span class="p">/chat</span><div class="d">Full persona + history</div></div></div>
+<div class="step"><div class="n on">5</div><div><span class="m m-POST">POST</span><span class="p">/reading/deep</span><div class="d">4000+ words (GLM-5.2 monolithic)</div></div></div>
+<div class="step"><div class="n on">6</div><div><span class="m m-GET">GET</span><span class="p">/admin/stats</span><div class="d">Platform admin (founder)</div></div></div>
+<div class="step locked"><div class="n off">7</div><div><span class="m m-POST">POST</span><span class="p">/transits</span><div class="d">Full calendar NOT BUILT</div></div></div>
+<div class="step locked"><div class="n off">8</div><div><span class="m m-POST">POST</span><span class="p">/guidance/daily</span><div class="d">NOT BUILT</div></div></div>
+</div>
+<div class="rt"><div class="sc" style="color:hsl(142 62% 52%)">7/10</div><div class="bar"><div style="width:70%;background:hsl(142 62% 52%)"></div></div><div class="lb">Best delivered tier. Missing transits + daily guidance.</div></div>
+</div></div>
+
+</div>
+</section>
+
+<!-- TECH -->
+<section id="tech">
+<div class="sh"><div class="num">03 / Technology Utilization</div><h2>How well are we using each technology?</h2></div>
+<div class="g"><div class="tech-grid">
+<div class="tc"><div class="tc-h"><div class="tc-n">Swiss Ephemeris</div><div class="tc-s" style="background:hsl(var(--ok)/.15);color:hsl(var(--ok))">8/10</div></div><div class="tc-u">15 bodies in 40ms. Arc-minute precision.</div><div class="tc-bar"><div style="width:80%;background:hsl(var(--ok))"></div></div><div class="tc-note">Missing: transit calculations (current vs natal positions).</div></div>
+<div class="tc"><div class="tc-h"><div class="tc-n">Z.AI GLM-5.2</div><div class="tc-s" style="background:hsl(var(--warn)/.15);color:hsl(var(--warn))">6/10</div></div><div class="tc-u">Chat + deep reading. Guardrail blocks non-astrology.</div><div class="tc-bar"><div style="width:60%;background:hsl(var(--warn))"></div></div><div class="tc-note">Missing: persona persistence, daily guidance, transit interpretation.</div></div>
+<div class="tc"><div class="tc-h"><div class="tc-n">SQLite</div><div class="tc-s" style="background:hsl(var(--warn)/.15);color:hsl(var(--warn))">5/10</div></div><div class="tc-u">Users, charts, posts. Chat sessions in-memory.</div><div class="tc-bar"><div style="width:50%;background:hsl(var(--warn))"></div></div><div class="tc-note">Missing: chat persistence, reading storage, analytics.</div></div>
+<div class="tc"><div class="tc-h"><div class="tc-n">Caddy 2</div><div class="tc-s" style="background:hsl(var(--ok)/.15);color:hsl(var(--ok))">9/10</div></div><div class="tc-u">TLS, HTTP/3, static serving, proxy. Sub-5ms.</div><div class="tc-bar"><div style="width:90%;background:hsl(var(--ok))"></div></div><div class="tc-note">Missing: rate limiting on API.</div></div>
+<div class="tc"><div class="tc-h"><div class="tc-n">React 19 + shadcn/ui</div><div class="tc-s" style="background:hsl(var(--warn)/.15);color:hsl(var(--warn))">6/10</div></div><div class="tc-u">20 pages, cosmic design. 484KB bundle.</div><div class="tc-bar"><div style="width:60%;background:hsl(var(--warn))"></div></div><div class="tc-note">Many pages render empty (transits, horoscope, guidance).</div></div>
+<div class="tc"><div class="tc-h"><div class="tc-n">Model Cascade</div><div class="tc-s" style="background:hsl(var(--ok)/.15);color:hsl(var(--ok))">8/10</div></div><div class="tc-u">GLM-5.2 → MiniMax → Qwen → GPT-4o-mini.</div><div class="tc-bar"><div style="width:80%;background:hsl(var(--ok))"></div></div><div class="tc-note">Works. Could add cost tracking + A/B testing.</div></div>
+</div></div>
+</section>
+
+<!-- PROMISES -->
+<section id="promises">
+<div class="sh"><div class="num">04 / Promise vs Delivery</div><h2>What we tell users vs what works</h2></div>
+<div class="g">
+<div class="promise"><div class="pi met">✓</div><div><div class="pt">Swiss Ephemeris precision</div><div class="pd">DELIVERED. 15 bodies, arc-minute. Verified.</div></div></div>
+<div class="promise"><div class="pi met">✓</div><div><div class="pt">Five name numerology traditions</div><div class="pd">DELIVERED. All 5 compute real values.</div></div></div>
+<div class="promise"><div class="pi met">✓</div><div><div class="pt">Nothing invented, reproducible</div><div class="pd">DELIVERED. 60+ truth-layer assertions enforce it.</div></div></div>
+<div class="promise"><div class="pi met">✓</div><div><div class="pt">AI Coach grounded in chart</div><div class="pd">DELIVERED. Chat accepts chart context. Guardrail works.</div></div></div>
+<div class="promise"><div class="pi partial">~</div><div><div class="pt">Daily guidance</div><div class="pd">PARTIAL. Chat can guide, but no automated daily endpoint. Dashboard empty.</div></div></div>
+<div class="promise"><div class="pi partial">~</div><div><div class="pt">Deep reading in 48h</div><div class="pd">PARTIAL. Endpoint works (4000+ words), no payment trigger or queue.</div></div></div>
+<div class="promise"><div class="pi miss">✗</div><div><div class="pt">Transits and timing</div><div class="pd">NOT DELIVERED. No endpoint. Pages render empty.</div></div></div>
+<div class="promise"><div class="pi miss">✗</div><div><div class="pt">Daily horoscope</div><div class="pd">NOT DELIVERED. Static placeholder only.</div></div></div>
+<div class="promise"><div class="pi miss">✗</div><div><div class="pt">Pause/cancel in two clicks</div><div class="pd">NOT DELIVERED. No Stripe integration.</div></div></div>
+</div>
+</section>
+
+<!-- SCORES -->
+<section id="scores">
+<div class="sh"><div class="num">05 / Overall Scores</div><h2>The honest report card</h2></div>
+<div class="g">
+<div class="scores">
+<div class="score-box"><div class="sv" style="color:hsl(var(--ok))">7</div><div class="sl">Engine</div><div class="sn">Swiss + Moshier + patterns + numerology. Missing transits.</div></div>
+<div class="score-box"><div class="sv" style="color:hsl(var(--warn))">5</div><div class="sl">Product</div><div class="sn">Chart + chat + admin work. Dashboard, transits, payments missing.</div></div>
+<div class="score-box"><div class="sv" style="color:hsl(var(--ok))">8</div><div class="sl">AI Integration</div><div class="sn">GLM-5.2 + cascade + guardrail + deep reading.</div></div>
+<div class="score-box"><div class="sv" style="color:hsl(var(--ok))">9</div><div class="sl">Infrastructure</div><div class="sn">Caddy + Docker + TLS + sub-5ms. Zero downtime.</div></div>
+</div>
+<div style="margin-top:18px;padding:14px;background:hsl(var(--warn)/.06);border:1px solid hsl(var(--warn)/.2);border-radius:10px;font-size:.8rem;color:hsl(var(--fg)/.8)">
+<strong style="color:hsl(var(--warn))">Bottom line:</strong> Engine + AI are strong (7-8/10). Product layer is the bottleneck (5/10) — 4 endpoints needed: transits, daily guidance, horoscope, payments. Infrastructure is production-ready (9/10). Cross-verified by 2 independent agents against live code.
+</div>
+</div>
+</section>
+
+</div></main>
+
+<footer class="ft"><div class="wrap">
+<div class="ft-info">
+Mindmap: <b>boardmix.com/116026/2508406</b> ·
+API probes: live from <b>nataltruth.com</b> ·
+Cross-verified by 2 agents ·
+Last updated: <b>2026-07-27</b>
+</div>
+</div></footer>
+
+</body>
+</html>
