@@ -40,38 +40,64 @@ app.use(express.json({ limit: "2mb" }));
 app.use(cookieParser());
 
 // ── Plan tier limits ────────────────────────────────────────────────
-const PLAN_LIMITS: Record<string, { chatDaily: number; friendDaily: number; readingWords: number }> = {
-  free:         { chatDaily: 0,   friendDaily: 0,   readingWords: 0 },
-  enthusiast:   { chatDaily: 50,  friendDaily: 50,  readingWords: 2000 },
-  advanced:     { chatDaily: -1,  friendDaily: -1,  readingWords: 3000 },
-  professional: { chatDaily: -1,  friendDaily: -1,  readingWords: 4000 },
+// ── Plan tier economics ─────────────────────────────────────────────
+// Internal cost ratios — NEVER exposed to users via API responses.
+const PLAN_CONFIG: Record<string, {
+  apiBudgetCents: number;    // monthly included budget (0=blocked, -1=unlimited internal)
+  readingWords: number;      // max words per deep reading
+  readingCostCents: number;  // cost deducted per reading (0=included)
+  costRatio: number;         // internal multiplier on actual API cost (1/5=0.2, 1/6≈0.167)
+  payAsYouGo: boolean;       // allow pay-as-you-go when budget exhausted
+}> = {
+  free:         { apiBudgetCents: 0,    readingWords: 0,    readingCostCents: 0,   costRatio: 0,     payAsYouGo: false },
+  enthusiast:   { apiBudgetCents: 500,  readingWords: 2000, readingCostCents: 40,  costRatio: 0.167, payAsYouGo: true },
+  advanced:     { apiBudgetCents: -1,   readingWords: 3000, readingCostCents: 0,   costRatio: 0.2,   payAsYouGo: false },
+  professional: { apiBudgetCents: -1,   readingWords: 4000, readingCostCents: 0,   costRatio: 0.2,   payAsYouGo: false },
 };
+
+const FOUNDER_TIER = "professional";
 
 function getUserTier(req: ExpressRequest): string {
   const user = (req as ExpressRequest & { user?: AuthUser }).user;
   if (!user) return "free";
   const founderEmails = (process.env.FOUNDER_EMAILS || process.env.ADMIN_EMAIL || "")
     .split(",").map(e => e.trim().toLowerCase()).filter(Boolean);
-  if (founderEmails.includes(user.email.toLowerCase())) return "professional";
+  if (founderEmails.includes(user.email.toLowerCase())) return FOUNDER_TIER;
   const row = db.prepare("SELECT subscription_tier FROM users WHERE id = ?").get(user.id) as { subscription_tier: string } | undefined;
   return row?.subscription_tier || "free";
 }
 
-function checkApiLimit(userId: string, endpoint: string, dailyLimit: number): { allowed: boolean; reason?: string } {
-  if (dailyLimit === -1) return { allowed: true };
-  if (dailyLimit === 0) return { allowed: false, reason: "Upgrade to use AI features." };
-  const today = new Date().toISOString().slice(0, 10);
-  const row = db.prepare("SELECT count FROM api_usage WHERE user_id = ? AND date = ? AND endpoint = ?").get(userId, today, endpoint) as { count: number } | undefined;
-  if ((row?.count || 0) >= dailyLimit) {
-    return { allowed: false, reason: `Daily limit reached (${dailyLimit}). Upgrade for more.` };
-  }
-  return { allowed: true };
+/** Estimate API cost in cents from token usage. Currently Z.AI is free,
+ *  but we track for when billing activates. Estimate: $0.002/1K completion tokens. */
+function estimateApiCostCents(completionTokens: number, promptTokens: number): number {
+  const COST_PER_1K_COMPLETION = 0.2; // cents
+  const COST_PER_1K_PROMPT = 0.01;    // cents
+  return Math.ceil((completionTokens / 1000) * COST_PER_1K_COMPLETION + (promptTokens / 1000) * COST_PER_1K_PROMPT);
 }
 
-function incrementApiUsage(userId: string, endpoint: string): void {
-  const today = new Date().toISOString().slice(0, 10);
-  db.prepare("INSERT OR REPLACE INTO api_usage(user_id, date, endpoint, count) VALUES(?,?,?,COALESCE((SELECT count FROM api_usage WHERE user_id=? AND date=? AND endpoint=?),0)+1)")
-    .run(userId, today, endpoint, userId, today, endpoint);
+/** Charge user's internal meter. Applies the plan's cost ratio internally. */
+function chargeApiUsage(userId: string, actualCostCents: number, tier: string): void {
+  const config = PLAN_CONFIG[tier] || PLAN_CONFIG.free;
+  if (config.costRatio === 0) return; // free plan, no tracking needed
+  const internalCost = Math.ceil(actualCostCents * config.costRatio);
+  db.prepare("UPDATE users SET api_spent_cents = api_spent_cents + ? WHERE id = ?").run(internalCost, userId);
+}
+
+/** Check if user can make an AI call based on their plan + budget. */
+function canUseAi(userId: string, tier: string): { allowed: boolean; reason?: string } {
+  const config = PLAN_CONFIG[tier] || PLAN_CONFIG.free;
+  if (config.apiBudgetCents === 0) {
+    return { allowed: false, reason: "Upgrade to a paid plan to use AI features." };
+  }
+  if (config.apiBudgetCents === -1) return { allowed: true }; // unlimited
+  // Budget-limited plan: check remaining
+  const row = db.prepare("SELECT api_spent_cents, api_budget_cents FROM users WHERE id = ?").get(userId) as { api_spent_cents: number; api_budget_cents: number } | undefined;
+  const spent = row?.api_spent_cents || 0;
+  const budget = row?.api_budget_cents || config.apiBudgetCents;
+  if (spent >= budget && !config.payAsYouGo) {
+    return { allowed: false, reason: "Monthly AI usage limit reached. Upgrade for unlimited access." };
+  }
+  return { allowed: true };
 }
 app.use(
   cors({
@@ -214,14 +240,12 @@ app.get("/pricing", (_req, res) => {
         name: "Free",
         price: 0,
         period: null,
-        tagline: "All calculations, no AI",
+        tagline: "All calculations. No AI.",
         features: [
-          "Full natal chart (Swiss Ephemeris)",
+          "Full natal chart (Swiss + Moshier)",
           "5-tradition name numerology",
           "2 free deep readings",
-          "Daily horoscope per sign",
-          "Compatibility matrix",
-          "Blog + educational content",
+          "Daily horoscope + compatibility",
         ],
       },
       {
@@ -229,14 +253,14 @@ app.get("/pricing", (_req, res) => {
         name: "Enthusiast",
         price: 29,
         period: "/month",
-        tagline: "AI Coach + daily guidance",
+        tagline: "AI Coach + AI Friend included",
         features: [
           "Everything in Free",
-          "AI Coach (50 messages/day)",
-          "AI Friend (50 messages/day)",
+          "AI Coach + AI Friend",
           "Daily personalized guidance",
           "Transit forecasts",
-          "Deep readings (max 2000 words)",
+          "Deep readings up to 2000 words",
+          "Pay-as-you-go when included usage runs out",
         ],
       },
       {
@@ -244,13 +268,13 @@ app.get("/pricing", (_req, res) => {
         name: "Advanced",
         price: 79,
         period: "/month",
-        tagline: "Unlimited AI + deeper reports",
+        tagline: "Unlimited AI. Deeper reports.",
         popular: true,
         features: [
           "Everything in Enthusiast",
-          "Unlimited AI Coach + Friend",
-          "Deep readings (max 3000 words)",
-          "Priority generation queue",
+          "Unlimited AI Coach + AI Friend",
+          "Deep readings up to 3000 words",
+          "Priority generation",
           "Advanced pattern analysis",
         ],
       },
@@ -259,13 +283,13 @@ app.get("/pricing", (_req, res) => {
         name: "Professional",
         price: 199,
         period: "/month",
-        tagline: "Swiss-only, full precision, for coaches",
+        tagline: "Swiss-only precision. For coaches.",
         features: [
           "Everything in Advanced",
           "Swiss-only calculations",
-          "Deep readings (4000+ words)",
+          "Deep readings 4000+ words",
           "Watermark-free sharing",
-          "API access",
+          "API access for programmatic use",
         ],
       },
     ],
@@ -436,14 +460,9 @@ app.post("/chat", async (req, res) => {
 
     if (userId) {
       const tier = getUserTier(req as ExpressRequest);
-      const limits = PLAN_LIMITS[tier] || PLAN_LIMITS.free;
-      if (limits.chatDaily === 0) {
-        res.status(403).json({ ok: false, error: "AI Coach requires a paid plan. Upgrade to chat." });
-        return;
-      }
-      const limitCheck = checkApiLimit(userId, "chat", limits.chatDaily);
-      if (!limitCheck.allowed) {
-        res.status(429).json({ ok: false, error: limitCheck.reason });
+      const aiCheck = canUseAi(userId, tier);
+      if (!aiCheck.allowed) {
+        res.status(403).json({ ok: false, error: aiCheck.reason });
         return;
       }
 
@@ -474,7 +493,11 @@ app.post("/chat", async (req, res) => {
       db.prepare(
         "INSERT INTO chat_messages(id, user_id, session_id, role, content, timestamp) VALUES(?,?,?,?,?,?)"
       ).run(newId("msg"), userId, sid, "assistant", response, nowIso());
-      incrementApiUsage(userId, "chat");
+
+      const tier = getUserTier(req as ExpressRequest);
+      const estimatedTokens = Math.ceil(response.length / 4) + Math.ceil(body.message.length / 4);
+      const actualCost = estimateApiCostCents(estimatedTokens, body.message.length / 4);
+      chargeApiUsage(userId, actualCost, tier);
     }
 
     res.json({ ok: true, response, model, session_id: sid });

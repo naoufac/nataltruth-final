@@ -22,6 +22,10 @@ CREATE TABLE IF NOT EXISTS users (
   subscription_tier  TEXT NOT NULL DEFAULT 'free',
   stripe_customer_id TEXT,
   subscription_id    TEXT,
+  api_spent_cents    INTEGER NOT NULL DEFAULT 0,
+  api_budget_cents   INTEGER NOT NULL DEFAULT 0,
+  free_reports_used  INTEGER NOT NULL DEFAULT 0,
+  billing_cycle_start TEXT,
   created_at         TEXT NOT NULL
 );
 
@@ -112,7 +116,11 @@ try {
   db.exec("ALTER TABLE users ADD COLUMN subscription_tier TEXT NOT NULL DEFAULT 'free';");
   db.exec("ALTER TABLE users ADD COLUMN stripe_customer_id TEXT;");
   db.exec("ALTER TABLE users ADD COLUMN subscription_id TEXT;");
-  console.log("[db] Migration: added subscription columns to users.");
+  db.exec("ALTER TABLE users ADD COLUMN api_spent_cents INTEGER NOT NULL DEFAULT 0;");
+  db.exec("ALTER TABLE users ADD COLUMN api_budget_cents INTEGER NOT NULL DEFAULT 0;");
+  db.exec("ALTER TABLE users ADD COLUMN free_reports_used INTEGER NOT NULL DEFAULT 0;");
+  db.exec("ALTER TABLE users ADD COLUMN billing_cycle_start TEXT;");
+  console.log("[db] Migration: added subscription + billing columns to users.");
 }
 
 // Migration: add category column to posts if missing (for existing DBs)
