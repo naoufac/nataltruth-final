@@ -36,7 +36,7 @@ export default function PricingPage() {
     const fetchPricing = async () => {
       setPricingError(null);
       try {
-        const response = await axios.get(`${API}/pricing`);
+        const response = await axios.get(`${API}/api/pricing`);
         setPlans(response.data.plans);
       } catch (error) {
         console.error("Error fetching pricing:", error);

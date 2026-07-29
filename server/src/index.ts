@@ -232,7 +232,7 @@ app.get("/health", (_req, res) => {
 });
 
 // ── Pricing ────────────────────────────────────────────────────────
-app.get("/pricing", (_req, res) => {
+app.get("/api/pricing", (_req, res) => {
   res.json({
     plans: [
       {
@@ -719,7 +719,7 @@ app.get("/guidance/daily", async (req, res) => {
 // ── Daily horoscope: per-sign GLM-5.2 content ──────────────────────
 const ZODIAC_SIGNS_LIST = ["Aries","Taurus","Gemini","Cancer","Leo","Virgo","Libra","Scorpio","Sagittarius","Capricorn","Aquarius","Pisces"];
 
-app.get("/horoscope/:sign", async (req, res) => {
+app.get("/api/horoscope/:sign", async (req, res) => {
   try {
     const sign = ZODIAC_SIGNS_LIST.find(s => s.toLowerCase() === req.params.sign.toLowerCase());
     if (!sign) { res.status(400).json({ ok: false, error: "Invalid zodiac sign." }); return; }
@@ -754,7 +754,7 @@ app.get("/horoscope/:sign", async (req, res) => {
   }
 });
 
-app.get("/horoscope", async (_req, res) => {
+app.get("/api/horoscope/all", async (_req, res) => {
   const today = new Date().toISOString().slice(0, 10);
   const signs = ZODIAC_SIGNS_LIST;
   const results: any[] = [];
