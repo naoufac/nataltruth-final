@@ -99,10 +99,11 @@ const AuthProvider = ({ children }) => {
     const verifyToken = async () => {
       if (token) {
         try {
-          const response = await axios.get(`${API}/auth/me`, {
+          const response = await axios.get(`${API}/api/auth/me`, {
+            withCredentials: true,
             headers: { Authorization: `Bearer ${token}` }
           });
-          setUser(response.data);
+          setUser(response.data.user || response.data);
         } catch (error) {
           console.error("Token verification failed:", error);
           localStorage.removeItem("gab44_token");
@@ -122,21 +123,23 @@ const AuthProvider = ({ children }) => {
   }, [user]);
 
   const login = async (email, password) => {
-    const response = await axios.post(`${API}/auth/login`, { email, password });
-    const { access_token, user: userData } = response.data;
-    localStorage.setItem("gab44_token", access_token);
-    setToken(access_token);
-    setUser(userData);
-    return userData;
+    const response = await axios.post(`${API}/api/auth/login`, { email, password }, { withCredentials: true });
+    const userData = response.data.user;
+    const fakeToken = `local-${Date.now()}`;
+    localStorage.setItem("gab44_token", fakeToken);
+    setToken(fakeToken);
+    setUser(profileToUser(userData));
+    return profileToUser(userData);
   };
 
   const register = async (userData) => {
-    const response = await axios.post(`${API}/auth/register`, userData);
-    const { access_token, user: newUser } = response.data;
-    localStorage.setItem("gab44_token", access_token);
-    setToken(access_token);
-    setUser(newUser);
-    return newUser;
+    const response = await axios.post(`${API}/api/auth/register`, userData, { withCredentials: true });
+    const newUser = response.data.user;
+    const fakeToken = `local-${Date.now()}`;
+    localStorage.setItem("gab44_token", fakeToken);
+    setToken(fakeToken);
+    setUser(profileToUser(newUser));
+    return profileToUser(newUser);
   };
 
   const updateUser = (updatedData) => {
