@@ -12,3 +12,4 @@ web/node_modules/
 # keep stress reports tracked (truth evidence) — do NOT ignore here
 
 web/tsconfig.tsbuildinfo
+.aider*

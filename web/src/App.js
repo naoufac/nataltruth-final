@@ -325,8 +325,8 @@ function App() {
                   </AdminRoute>
                 } 
               />
-            </Routes>
             <Route path="*" element={<NotFoundPage />} />
+            </Routes>
             </Suspense>
           </BrowserRouter>
           <Toaster position="top-right" />
