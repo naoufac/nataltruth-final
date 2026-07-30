@@ -51,7 +51,15 @@ export function clearSessionCookie(res: Response): void {
 }
 
 export function readToken(req: Request): string | null {
-  return req.cookies?.[COOKIE_NAME] || null;
+  // Read from cookie first
+  const cookieToken = req.cookies?.[COOKIE_NAME];
+  if (cookieToken) return cookieToken;
+  // Fallback: read from Authorization Bearer header
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (typeof authHeader === "string" && authHeader.startsWith("Bearer ")) {
+    return authHeader.slice(7);
+  }
+  return null;
 }
 
 function publicUser(row: {

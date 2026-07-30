@@ -2,6 +2,9 @@ import { useState, useEffect, createContext, useContext, lazy, Suspense } from "
 import "@/App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import axios from "axios";
+
+// Send cookies with every request (auth is cookie-based)
+axios.defaults.withCredentials = true;
 import { Toaster } from "@/components/ui/sonner";
 import { ThemeProvider } from "@/context/ThemeContext";
 import { ReadingModeProvider } from "@/context/ReadingModeContext";
@@ -125,21 +128,29 @@ const AuthProvider = ({ children }) => {
   const login = async (email, password) => {
     const response = await axios.post(`${API}/api/auth/login`, { email, password }, { withCredentials: true });
     const userData = response.data.user;
-    const fakeToken = `local-${Date.now()}`;
-    localStorage.setItem("gab44_token", fakeToken);
-    setToken(fakeToken);
-    setUser(profileToUser(userData));
-    return profileToUser(userData);
+    // Get a real JWT by calling /api/auth/me with the cookie that was just set
+    const meResp = await axios.get(`${API}/api/auth/me`, { withCredentials: true });
+    const fullUser = meResp.data.user || meResp.data;
+    // Use the user ID as a session token reference (cookie handles actual auth)
+    const sessionToken = `nt_${fullUser.id}_${Date.now()}`;
+    localStorage.setItem("gab44_token", sessionToken);
+    setToken(sessionToken);
+    const hydrated = await hydrateEntitlement(profileToUser(fullUser));
+    setUser(hydrated);
+    return hydrated;
   };
 
   const register = async (userData) => {
     const response = await axios.post(`${API}/api/auth/register`, userData, { withCredentials: true });
     const newUser = response.data.user;
-    const fakeToken = `local-${Date.now()}`;
-    localStorage.setItem("gab44_token", fakeToken);
-    setToken(fakeToken);
-    setUser(profileToUser(newUser));
-    return profileToUser(newUser);
+    const meResp = await axios.get(`${API}/api/auth/me`, { withCredentials: true });
+    const fullUser = meResp.data.user || meResp.data;
+    const sessionToken = `nt_${fullUser.id}_${Date.now()}`;
+    localStorage.setItem("gab44_token", sessionToken);
+    setToken(sessionToken);
+    const hydrated = await hydrateEntitlement(profileToUser(fullUser));
+    setUser(hydrated);
+    return hydrated;
   };
 
   const updateUser = (updatedData) => {

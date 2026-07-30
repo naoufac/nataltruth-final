@@ -9,6 +9,7 @@ const http = axios.create({
   baseURL: BACKEND_URL,
   timeout: 90_000,
   headers: { "Content-Type": "application/json" },
+  withCredentials: true,
 });
 
 // ─── Low-level calls (calc + name only; no health polling) ───────────
