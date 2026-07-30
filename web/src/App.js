@@ -42,8 +42,8 @@ const RouteFallback = () => (
   </div>
 );
 
-const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
-export const API = `${BACKEND_URL}/api`;
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL || "";
+export const API = BACKEND_URL;
 
 // Auth Context
 const AuthContext = createContext(null);
@@ -55,6 +55,58 @@ export const useAuth = () => {
   }
   return context;
 };
+
+const SESSION_KEY = "gab44_token";
+const PROFILE_KEY = "nataltruth_profile";
+
+function loadLocalProfile() {
+  try { return JSON.parse(localStorage.getItem(PROFILE_KEY)); } catch { return null; }
+}
+function saveLocalProfile(p) { localStorage.setItem(PROFILE_KEY, JSON.stringify(p)); }
+function clearLocalProfile() { localStorage.removeItem(PROFILE_KEY); }
+
+function profileToUser(profile) {
+  if (!profile) return null;
+  const email = (profile.email || "").toLowerCase();
+  const plan = profile.subscription_tier || profile.plan || "free";
+  const isFounder = email === "nchobah@gmail.com";
+  return {
+    id: profile.id || "local",
+    email: profile.email || "",
+    name: profile.name || profile.birth_name || "",
+    birth_name: profile.birth_name || profile.name || "",
+    birth_date: profile.birth_date || "",
+    birth_time: profile.birth_time || "",
+    birth_place: profile.birth_place || "",
+    latitude: profile.latitude,
+    longitude: profile.longitude,
+    utc_offset: profile.utc_offset || profile.utcOffset || null,
+    timezone: profile.timezone || profile.timeZoneId || null,
+    is_admin: !!(profile.is_admin || isFounder),
+    is_guest: false,
+    tier: isFounder ? "professional" : plan,
+    plan: isFounder ? "professional" : plan,
+    subscription_tier: isFounder ? "professional" : plan,
+    engineDefault: profile.engineDefault || (plan === "professional" ? "swiss" : "swiss"),
+    sun_sign: profile.sun_sign || null,
+  };
+}
+
+async function hydrateEntitlement(profile) {
+  if (!profile?.email) return profile;
+  try {
+    const { fetchEntitlement } = await import("@/lib/nataltruth");
+    const ent = await fetchEntitlement(profile.email);
+    if (!ent) return profile;
+    return {
+      ...profile,
+      plan: ent.plan,
+      subscription_tier: ent.plan,
+      tier: ent.plan,
+      engineDefault: ent.engineDefault,
+    };
+  } catch { return profile; }
+}
 
 const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
@@ -102,14 +154,14 @@ const AuthProvider = ({ children }) => {
     const verifyToken = async () => {
       if (token) {
         try {
-          const response = await axios.get(`${API}/api/auth/me`, {
-            withCredentials: true,
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setUser(response.data.user || response.data);
+          const response = await axios.get(`${API}/api/auth/me`, { withCredentials: true });
+          const u = response.data.user || response.data;
+          if (u) {
+            const hydrated = await hydrateEntitlement(profileToUser(u));
+            setUser(hydrated);
+          }
         } catch (error) {
-          console.error("Token verification failed:", error);
-          localStorage.removeItem("gab44_token");
+          localStorage.removeItem(SESSION_KEY);
           setToken(null);
         }
       }
@@ -127,14 +179,11 @@ const AuthProvider = ({ children }) => {
 
   const login = async (email, password) => {
     const response = await axios.post(`${API}/api/auth/login`, { email, password }, { withCredentials: true });
-    const userData = response.data.user;
-    // Get a real JWT by calling /api/auth/me with the cookie that was just set
-    const meResp = await axios.get(`${API}/api/auth/me`, { withCredentials: true });
-    const fullUser = meResp.data.user || meResp.data;
-    // Use the user ID as a session token reference (cookie handles actual auth)
-    const sessionToken = `nt_${fullUser.id}_${Date.now()}`;
-    localStorage.setItem("gab44_token", sessionToken);
+    const fullUser = response.data.user;
+    const sessionToken = `session_${fullUser.id}`;
+    localStorage.setItem(SESSION_KEY, sessionToken);
     setToken(sessionToken);
+    saveLocalProfile(fullUser);
     const hydrated = await hydrateEntitlement(profileToUser(fullUser));
     setUser(hydrated);
     return hydrated;
@@ -142,12 +191,11 @@ const AuthProvider = ({ children }) => {
 
   const register = async (userData) => {
     const response = await axios.post(`${API}/api/auth/register`, userData, { withCredentials: true });
-    const newUser = response.data.user;
-    const meResp = await axios.get(`${API}/api/auth/me`, { withCredentials: true });
-    const fullUser = meResp.data.user || meResp.data;
-    const sessionToken = `nt_${fullUser.id}_${Date.now()}`;
-    localStorage.setItem("gab44_token", sessionToken);
+    const fullUser = response.data.user;
+    const sessionToken = `session_${fullUser.id}`;
+    localStorage.setItem(SESSION_KEY, sessionToken);
     setToken(sessionToken);
+    saveLocalProfile(fullUser);
     const hydrated = await hydrateEntitlement(profileToUser(fullUser));
     setUser(hydrated);
     return hydrated;
